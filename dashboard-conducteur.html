@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voisin de Route — Tableau de bord Conducteur</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --vert:        #1A7A46;
+      --vert-fonce:  #0F5230;
+      --vert-clair:  #EBF5EF;
+      --jaune:       #E8B400;
+      --jaune-pale:  #FDF8E3;
+      --noir:        #111418;
+      --gris-fort:   #3D4452;
+      --gris-moyen:  #6C7585;
+      --gris-leger:  #F2F4F7;
+      --bordure:     #E2E6EC;
+      --blanc:       #FFFFFF;
+      --rouge:       #D93025;
+      --rouge-pale:  #FEF2F2;
+      --sidebar-w:   240px;
+    }
+
+    html { font-size: 16px; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--gris-leger);
+      color: var(--noir);
+      min-height: 100vh;
+      display: flex;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--vert-fonce);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .sidebar-logo {
+      padding: 1.4rem 1.4rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .sidebar-logo a {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.05rem; font-weight: 800;
+      color: var(--blanc); text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .sidebar-logo a span { color: var(--jaune); }
+
+    .sidebar-role {
+      font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35); margin-top: 0.2rem;
+    }
+
+    .sidebar-profile {
+      padding: 1.2rem 1.4rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    .profile-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--jaune);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 800; color: var(--noir);
+      flex-shrink: 0;
+    }
+
+    .profile-name {
+      font-size: 0.875rem; font-weight: 600; color: var(--blanc);
+      line-height: 1.3;
+    }
+    .profile-status {
+      font-size: 0.72rem; color: rgba(255,255,255,0.45);
+      display: flex; align-items: center; gap: 0.35rem; margin-top: 0.1rem;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #4ADE80;
+    }
+
+    .sidebar-nav {
+      flex: 1; padding: 1rem 0;
+      overflow-y: auto;
+    }
+
+    .nav-section-label {
+      font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      padding: 0.6rem 1.4rem 0.3rem;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 1.4rem;
+      font-size: 0.875rem; font-weight: 500;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer; transition: all 0.15s;
+      border-left: 3px solid transparent;
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--blanc);
+    }
+
+    .nav-item.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--blanc);
+      border-left-color: var(--jaune);
+    }
+
+    .nav-item svg {
+      width: 16px; height: 16px; flex-shrink: 0;
+      stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--jaune); color: var(--noir);
+      font-size: 0.65rem; font-weight: 700;
+      padding: 0.15rem 0.45rem; border-radius: 50px;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.4rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .btn-logout {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.82rem; font-weight: 500;
+      color: rgba(255,255,255,0.45);
+      background: none; border: none; cursor: pointer;
+      padding: 0; transition: color 0.2s;
+    }
+    .btn-logout:hover { color: rgba(255,255,255,0.8); }
+    .btn-logout svg {
+      width: 15px; height: 15px;
+      stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1; display: flex; flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      height: 60px;
+      background: var(--blanc);
+      border-bottom: 1px solid var(--bordure);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem;
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    .topbar-left {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    .topbar-breadcrumb {
+      font-size: 0.82rem; color: var(--gris-moyen);
+    }
+    .topbar-breadcrumb span {
+      color: var(--noir); font-weight: 600;
+    }
+
+    .topbar-right {
+      display: flex; align-items: center; gap: 1rem;
+    }
+
+    .topbar-notif {
+      position: relative; cursor: pointer;
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid var(--bordure);
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .topbar-notif:hover { background: var(--gris-leger); }
+    .topbar-notif svg {
+      width: 16px; height: 16px;
+      stroke: var(--gris-fort); fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .notif-dot {
+      position: absolute; top: 6px; right: 6px;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--rouge); border: 1.5px solid var(--blanc);
+    }
+
+    .topbar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--jaune);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem; font-weight: 800; color: var(--noir);
+      cursor: pointer;
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      padding: 2rem;
+      flex: 1;
+    }
+
+    /* ── VUES ── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; flex-wrap: wrap;
+      gap: 1rem; margin-bottom: 2rem;
+    }
+
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight: 800;
+      color: var(--noir); letter-spacing: -0.02em;
+    }
+    .page-subtitle {
+      font-size: 0.875rem; color: var(--gris-moyen);
+      margin-top: 0.25rem; line-height: 1.5;
+    }
+
+    /* ── STATS CARDS ── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1rem; margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--blanc);
+      border: 1px solid var(--bordure);
+      border-radius: 12px; padding: 1.3rem 1.4rem;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover {
+      border-color: var(--vert);
+    }
+
+    .stat-card-top {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 0.9rem;
+    }
+
+    .stat-card-label {
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--gris-moyen); text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .stat-card-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stat-card-icon svg {
+      width: 16px; height: 16px; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .stat-card-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem; font-weight: 800;
+      color: var(--noir); line-height: 1;
+    }
+
+    .stat-card-sub {
+      font-size: 0.75rem; color: var(--gris-moyen); margin-top: 0.3rem;
+    }
+
+    .stat-card-trend {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 50px; margin-top: 0.4rem;
+    }
+    .trend-up   { background: var(--vert-clair); color: var(--vert); }
+    .trend-down { background: var(--rouge-pale); color: var(--rouge); }
+
+    /* ── GRILLE DASHBOARD ── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.5rem;
+    }
+
+    /* ── FORM PUBLIER TRAJET ── */
+    .form-card {
+      background: var(--blanc);
+      border: 1px solid var(--bordure);
+      border-radius: 14px; overflow: hidden;
+      box-shadow: none;
+    }
+
+    .form-card-header {
+      padding: 1.3rem 1.6rem;
+      border-bottom: 1px solid var(--bordure);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    .form-card-header-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: var(--vert-clair);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .form-card-header-icon svg {
+      width: 18px; height: 18px;
+      stroke: var(--vert); fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .form-card-header-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem; font-weight: 800; color: var(--noir);
+    }
+    .form-card-header-sub {
+      font-size: 0.75rem; color: var(--gris-moyen); margin-top: 0.1rem;
+    }
+
+    .form-body { padding: 1.6rem; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+    .field { margin-bottom: 1.1rem; }
+
+    .field label {
+      display: block;
+      font-size: 0.72rem; font-weight: 600;
+      color: var(--gris-fort); text-transform: uppercase;
+      letter-spacing: 0.07em; margin-bottom: 0.4rem;
+    }
+
+    .field-req { color: var(--rouge); margin-left: 2px; }
+
+    .input-wrap { position: relative; }
+
+    .input-wrap svg.field-icon {
+      position: absolute; left: 0.8rem; top: 50%;
+      transform: translateY(-50%);
+      width: 15px; height: 15px;
+      stroke: var(--gris-moyen); fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .input-wrap.has-icon input,
+    .input-wrap.has-icon select { padding-left: 2.4rem; }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%; padding: 0.72rem 0.9rem;
+      border: 1.5px solid var(--bordure); border-radius: 8px;
+      font-size: 0.875rem; font-family: 'Inter', sans-serif;
+      color: var(--noir); background: var(--blanc);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: #B8BFC9; }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--vert);
+      box-shadow: 0 0 0 2px rgba(26,122,70,0.06);
+    }
+    .field input.error { border-color: var(--rouge); }
+
+    .field-hint {
+      font-size: 0.72rem; color: var(--gris-moyen);
+      margin-top: 0.3rem; line-height: 1.5;
+    }
+    .field-error-msg {
+      font-size: 0.72rem; color: var(--rouge);
+      margin-top: 0.3rem; display: none;
+    }
+    .field-error-msg.visible { display: block; }
+
+    /* Tarif auto */
+    .tarif-preview {
+      background: var(--vert-clair);
+      border: 1px solid #A7D7BC;
+      border-radius: 8px; padding: 0.75rem 1rem;
+      margin-bottom: 1.1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tarif-label {
+      font-size: 0.78rem; color: var(--vert-fonce); font-weight: 500;
+    }
+    .tarif-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem; font-weight: 800; color: var(--vert);
+    }
+
+    /* Options recurrence */
+    .recurrence-options {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 0.4rem; margin-top: 0.5rem;
+    }
+    .day-btn {
+      padding: 0.4rem 0.2rem;
+      border: 1.5px solid var(--bordure); border-radius: 6px;
+      font-size: 0.7rem; font-weight: 600; color: var(--gris-moyen);
+      text-align: center; cursor: pointer; background: var(--blanc);
+      transition: all 0.15s;
+    }
+    .day-btn.selected {
+      border-color: var(--vert); background: var(--vert-clair); color: var(--vert);
+    }
+
+    /* Checkbox options */
+    .check-options { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.1rem; }
+    .check-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      cursor: pointer; font-size: 0.85rem; color: var(--gris-fort);
+    }
+    .check-item input[type="checkbox"] {
+      width: 15px; height: 15px; accent-color: var(--vert); cursor: pointer;
+    }
+
+    /* Divider */
+    .form-divider {
+      height: 1px; background: var(--bordure);
+      margin: 1.3rem 0;
+    }
+
+    .form-divider-label {
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--gris-moyen); text-transform: uppercase;
+      letter-spacing: 0.1em; margin-bottom: 1rem;
+    }
+
+    /* Boutons */
+    .form-actions {
+      display: flex; gap: 0.75rem; justify-content: flex-end;
+      padding: 1.2rem 1.6rem;
+      border-top: 1px solid var(--bordure);
+      background: var(--gris-leger);
+    }
+
+    .btn-annuler {
+      padding: 0.72rem 1.4rem; border-radius: 8px;
+      border: 1.5px solid var(--bordure); background: var(--blanc);
+      font-size: 0.875rem; font-weight: 600; color: var(--gris-fort);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-annuler:hover { border-color: var(--gris-fort); }
+
+    .btn-publier {
+      padding: 0.72rem 1.8rem; border-radius: 8px;
+      border: none; background: var(--vert); color: var(--blanc);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.875rem; font-weight: 700; letter-spacing: 0.02em;
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .btn-publier:hover { background: var(--vert-fonce); }
+    .btn-publier svg {
+      width: 15px; height: 15px; stroke: currentColor; fill: none;
+      stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .btn-publier .loader {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: var(--blanc); border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    .btn-publier.loading .btn-text,
+    .btn-publier.loading svg { display: none; }
+    .btn-publier.loading .loader { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── SIDEBAR DROITE ── */
+    .right-col { display: flex; flex-direction: column; gap: 1.2rem; }
+
+    .widget {
+      background: var(--blanc);
+      border: 1px solid var(--bordure);
+      border-radius: 14px; overflow: hidden;
+    }
+
+    .widget-header {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--bordure);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .widget-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.875rem; font-weight: 800; color: var(--noir);
+    }
+
+    .widget-link {
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--vert); text-decoration: none;
+    }
+
+    .widget-body { padding: 1rem 1.2rem; }
+
+    /* Mes trajets récents */
+    .trajet-item {
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--bordure);
+      cursor: pointer; transition: background 0.15s;
+    }
+    .trajet-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .trajet-item:first-child { padding-top: 0; }
+
+    .trajet-item-route {
+      font-size: 0.85rem; font-weight: 600; color: var(--noir);
+      margin-bottom: 0.3rem;
+    }
+
+    .trajet-item-meta {
+      display: flex; align-items: center; gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .trajet-meta-tag {
+      font-size: 0.68rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 4px;
+    }
+    .tag-actif    { background: var(--vert-clair); color: var(--vert); }
+    .tag-complet  { background: var(--jaune-pale); color: #7A5800; }
+    .tag-termine  { background: var(--gris-leger); color: var(--gris-moyen); }
+
+    .trajet-meta-date {
+      font-size: 0.72rem; color: var(--gris-moyen);
+    }
+
+    .trajet-item-places {
+      font-size: 0.72rem; color: var(--gris-moyen); margin-top: 0.2rem;
+    }
+
+    /* Demandes en attente */
+    .demande-item {
+      padding: 0.9rem 0;
+      border-bottom: 1px solid var(--bordure);
+    }
+    .demande-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .demande-item:first-child { padding-top: 0; }
+
+    .demande-passager {
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;
+    }
+    .demande-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--gris-leger);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; color: var(--gris-fort);
+      flex-shrink: 0;
+    }
+    .demande-name {
+      font-size: 0.83rem; font-weight: 600; color: var(--noir);
+    }
+    .demande-trajet {
+      font-size: 0.75rem; color: var(--gris-moyen); margin-bottom: 0.5rem;
+    }
+    .demande-actions { display: flex; gap: 0.5rem; }
+
+    .btn-accepter {
+      flex: 1; padding: 0.4rem;
+      background: var(--vert-clair); color: var(--vert);
+      border: 1px solid #A7D7BC; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .btn-accepter:hover { background: var(--vert); color: var(--blanc); }
+
+    .btn-refuser {
+      flex: 1; padding: 0.4rem;
+      background: var(--rouge-pale); color: var(--rouge);
+      border: 1px solid #FCA5A5; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .btn-refuser:hover { background: var(--rouge); color: var(--blanc); }
+
+    /* Conseil */
+    .conseil-card {
+      background: linear-gradient(135deg, var(--vert-fonce), var(--vert));
+      border-radius: 12px; padding: 1.2rem;
+    }
+    .conseil-label {
+      font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.5); margin-bottom: 0.4rem;
+    }
+    .conseil-text {
+      font-size: 0.83rem; color: var(--blanc); line-height: 1.65;
+    }
+    .conseil-text strong { color: var(--jaune); }
+
+    /* Succes publication */
+    .success-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 300; align-items: center; justify-content: center;
+    }
+    .success-overlay.visible { display: flex; }
+
+    .success-modal {
+      background: var(--blanc); border-radius: 16px;
+      padding: 2.5rem; max-width: 420px; width: 90%;
+      text-align: center;
+      animation: popIn 0.3s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .success-modal-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--vert-clair); border: 2px solid var(--vert);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.3rem;
+    }
+    .success-modal-icon svg {
+      width: 28px; height: 28px; stroke: var(--vert); fill: none;
+      stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .success-modal h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem; font-weight: 800; color: var(--noir);
+      margin-bottom: 0.5rem;
+    }
+    .success-modal p {
+      font-size: 0.875rem; color: var(--gris-moyen); line-height: 1.7;
+      margin-bottom: 1.6rem;
+    }
+    .success-modal-detail {
+      background: var(--gris-leger); border-radius: 10px;
+      padding: 1rem; margin-bottom: 1.6rem; text-align: left;
+    }
+    .detail-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.82rem; padding: 0.3rem 0;
+      border-bottom: 1px solid var(--bordure);
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { color: var(--gris-moyen); }
+    .detail-val { font-weight: 600; color: var(--noir); }
+    .btn-modal {
+      width: 100%; padding: 0.85rem;
+      background: var(--vert); color: var(--blanc);
+      border: none; border-radius: 8px; cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem; font-weight: 700;
+      transition: background 0.2s;
+    }
+    .btn-modal:hover { background: var(--vert-fonce); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 999;
+      background: var(--rouge); color: var(--blanc);
+      padding: 0.85rem 1.2rem; border-radius: 10px;
+      font-size: 0.85rem; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.35s cubic-bezier(.175,.885,.32,1.275);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── MES TRAJETS ── */
+    .trajet-filters { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 0.5rem 1.1rem; border-radius: 50px;
+      border: 1.5px solid var(--bordure);
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--gris-moyen); background: var(--blanc);
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      border-color: var(--vert); color: var(--vert); background: var(--vert-clair);
+    }
+    .filter-count {
+      display: inline-block; margin-left: 0.4rem;
+      font-size: 0.7rem; font-weight: 700;
+      background: rgba(0,0,0,0.06); padding: 0.05rem 0.4rem;
+      border-radius: 50px;
+    }
+
+    .trajet-full-card {
+      background: var(--blanc); border: 1px solid var(--bordure);
+      border-radius: 14px; padding: 1.4rem;
+      margin-bottom: 1rem;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 1.5rem; flex-wrap: wrap;
+    }
+    .trajet-full-left { flex: 1; min-width: 240px; }
+    .trajet-full-route {
+      font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 800;
+      color: var(--noir); margin: 0.6rem 0 0.4rem;
+    }
+    .trajet-full-meta {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      font-size: 0.82rem; color: var(--gris-moyen);
+    }
+    .trajet-full-places {
+      font-size: 0.8rem; color: var(--gris-moyen);
+      background: var(--gris-leger); padding: 0.4rem 0.8rem; border-radius: 8px;
+    }
+
+    /* Passager a evaluer */
+    .passager-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-top: 1rem; padding-top: 1rem;
+      border-top: 1px solid var(--bordure); flex-wrap: wrap;
+    }
+    .passager-info { display: flex; align-items: center; gap: 0.75rem; }
+    .passager-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--jaune-pale); color: #7A5800;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 800;
+      flex-shrink: 0;
+    }
+    .passager-name { font-size: 0.875rem; font-weight: 600; color: var(--noir); }
+    .passager-sub { font-size: 0.75rem; color: var(--gris-moyen); }
+
+    .btn-evaluer-passager {
+      padding: 0.55rem 1.2rem; border-radius: 8px;
+      border: none; background: var(--jaune); color: var(--noir);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-evaluer-passager:hover { background: #D4A500; }
+    .btn-evaluer-passager.done {
+      background: var(--vert-clair); color: var(--vert); cursor: default;
+    }
+    .btn-evaluer-passager.done:hover { background: var(--vert-clair); }
+
+    /* ── PROFIL ── */
+    .profil-grid { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: start; }
+
+    .profil-summary {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0.8rem; margin-bottom: 1.6rem;
+    }
+    .profil-stat {
+      text-align: center; padding: 1rem 0.5rem;
+      background: var(--gris-leger); border-radius: 10px;
+    }
+    .profil-stat-val {
+      font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--vert);
+    }
+    .profil-stat-label { font-size: 0.7rem; color: var(--gris-moyen); margin-top: 0.2rem; }
+
+    .rating-breakdown { display: flex; flex-direction: column; gap: 0.6rem; }
+    .rating-bar-row {
+      display: grid; grid-template-columns: 60px 1fr 24px;
+      gap: 0.7rem; align-items: center;
+      font-size: 0.78rem; color: var(--gris-moyen);
+    }
+    .rating-bar {
+      height: 7px; background: var(--gris-leger); border-radius: 4px; overflow: hidden;
+    }
+    .rating-bar-fill { height: 100%; background: var(--jaune); border-radius: 4px; }
+
+    /* Avis */
+    .avis-item {
+      padding: 1rem 0; border-bottom: 1px solid var(--bordure);
+    }
+    .avis-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .avis-item:first-child { padding-top: 0; }
+
+    .avis-header { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.5rem; }
+    .avis-info { flex: 1; }
+    .avis-name { font-size: 0.85rem; font-weight: 700; color: var(--noir); }
+    .avis-stars { font-size: 0.78rem; color: var(--jaune); letter-spacing: 0.05em; }
+    .avis-date { font-size: 0.75rem; color: var(--gris-moyen); }
+    .avis-text { font-size: 0.85rem; color: var(--gris-fort); line-height: 1.65; margin-bottom: 0.35rem; }
+    .avis-trajet { font-size: 0.75rem; color: var(--vert); font-weight: 600; }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .right-col { flex-direction: row; flex-wrap: wrap; }
+      .right-col .widget { flex: 1; min-width: 260px; }
+      .profil-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { display: none; }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <a href="accueil.html">Voisin <span>de</span> Route</a>
+    <div class="sidebar-role">Espace Conducteur</div>
+  </div>
+  <div class="sidebar-profile">
+    <div class="profile-avatar" id="sidebar-avatar">--</div>
+    <div>
+      <div class="profile-name" id="sidebar-nom">Chargement...</div>
+      <div class="profile-status"><div class="status-dot"></div> <span id="sidebar-statut">Compte verifie</span></div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Principal</div>
+    <a class="nav-item active" onclick="showView('publier')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Publier un trajet
+    </a>
+    <a class="nav-item" onclick="showView('mes-trajets')">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Mes trajets
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item" onclick="showView('demandes')">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Demandes recues
+      <span class="nav-badge">2</span>
+    </a>
+    <a class="nav-item" href="messagerie.html">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </a>
+    <div class="nav-section-label" style="margin-top:0.8rem;">Compte</div>
+    <a class="nav-item" onclick="showView('gains')">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Mes gains
+    </a>
+    <a class="nav-item" onclick="showView('profil')">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Mon profil
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="handleLogout()">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Se deconnecter
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-breadcrumb">Tableau de bord <span id="breadcrumb-current">— Publier un trajet</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-notif">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="notif-dot"></div>
+      </div>
+      <div class="topbar-avatar">KF</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ── VUE : PUBLIER UN TRAJET ── -->
+    <div class="view active" id="view-publier">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Publier un trajet</div>
+          <div class="page-subtitle">Renseignez les details de votre trajet pour trouver des passagers</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Trajets publies</div>
+            <div class="stat-card-icon" style="background:var(--vert-clair)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--vert)"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val">12</div>
+          <div class="stat-card-sub">Ce mois-ci</div>
+          <div class="stat-card-trend trend-up">+3 cette semaine</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Passagers transportes</div>
+            <div class="stat-card-icon" style="background:#EFF6FF">
+              <svg viewBox="0 0 24 24" style="stroke:#2563EB"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val">28</div>
+          <div class="stat-card-sub">Total cumule</div>
+          <div class="stat-card-trend trend-up">+5 ce mois</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Gains partages</div>
+            <div class="stat-card-icon" style="background:var(--jaune-pale)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--jaune)"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val">14 200</div>
+          <div class="stat-card-sub">FCFA recus en partage</div>
+          <div class="stat-card-trend trend-up">+2 400 FCFA</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Note moyenne</div>
+            <div class="stat-card-icon" style="background:#FFF7ED">
+              <svg viewBox="0 0 24 24" style="stroke:#EA580C"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val">4.8</div>
+          <div class="stat-card-sub">Sur 5 — 18 evaluations</div>
+          <div class="stat-card-trend trend-up">Excellent</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+
+        <!-- FORMULAIRE -->
+        <div class="form-card">
+          <div class="form-card-header">
+            <div class="form-card-header-icon">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </div>
+            <div>
+              <div class="form-card-header-title">Nouveau trajet</div>
+              <div class="form-card-header-sub">Les champs marques d'un asterisque sont obligatoires</div>
+            </div>
+          </div>
+
+          <div class="form-body">
+
+            <!-- Itineraire -->
+            <div class="form-divider-label">Itineraire</div>
+
+            <div class="form-row">
+              <div class="field">
+                <label>Ville de depart <span class="field-req">*</span></label>
+                <div class="input-wrap has-icon">
+                  <svg class="field-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+                  <select id="ville-depart">
+                    <option value="">Selectionner</option>
+                    <option>Abomey-Calavi — UAC Campus</option>
+                    <option>Cotonou — Centre-ville</option>
+                    <option>Porto-Novo</option>
+                    <option>Parakou</option>
+                    <option>Abomey</option>
+                    <option>Lokossa</option>
+                    <option>Natitingou</option>
+                    <option>Bohicon</option>
+                    <option>Autre</option>
+                  </select>
+                </div>
+                <div class="field-error-msg" id="err-depart">Veuillez selectionner une ville de depart</div>
+              </div>
+              <div class="field">
+                <label>Ville d'arrivee <span class="field-req">*</span></label>
+                <div class="input-wrap has-icon">
+                  <svg class="field-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <select id="ville-arrivee">
+                    <option value="">Selectionner</option>
+                    <option>Cotonou — Centre-ville</option>
+                    <option>Cotonou — Cadjehoun</option>
+                    <option>Cotonou — Akpakpa</option>
+                    <option>Porto-Novo</option>
+                    <option>Parakou</option>
+                    <option>Abomey</option>
+                    <option>Lokossa</option>
+                    <option>Natitingou</option>
+                    <option>Departement du Plateau</option>
+                    <option>Autre</option>
+                  </select>
+                </div>
+                <div class="field-error-msg" id="err-arrivee">Veuillez selectionner une ville d'arrivee</div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Point de depart precis</label>
+              <div class="input-wrap has-icon">
+                <svg class="field-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <input type="text" id="depart-precis" placeholder="Ex : Devant la bibliotheque universitaire UAC, batiment principal"/>
+              </div>
+              <div class="field-hint">Indiquer un repere connu facilite la mise en relation</div>
+            </div>
+
+            <div class="field">
+              <label>Point d'arrivee precis</label>
+              <div class="input-wrap has-icon">
+                <svg class="field-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <input type="text" id="arrivee-precis" placeholder="Ex : Carrefour Cadjehoun, en face de la pharmacie"/>
+              </div>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- Date et heure -->
+            <div class="form-divider-label">Date et horaire</div>
+
+            <div class="form-row">
+              <div class="field">
+                <label>Date du trajet <span class="field-req">*</span></label>
+                <div class="input-wrap has-icon">
+                  <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <input type="date" id="date-trajet"/>
+                </div>
+                <div class="field-error-msg" id="err-date">Veuillez selectionner une date</div>
+              </div>
+              <div class="field">
+                <label>Heure de depart <span class="field-req">*</span></label>
+                <div class="input-wrap has-icon">
+                  <svg class="field-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <input type="time" id="heure-depart"/>
+                </div>
+                <div class="field-error-msg" id="err-heure">Veuillez indiquer l'heure de depart</div>
+              </div>
+            </div>
+
+            <!-- Recurrence -->
+            <div class="field">
+              <label>Trajet recurrent ?</label>
+              <select id="recurrence" onchange="toggleRecurrence()">
+                <option value="non">Trajet unique</option>
+                <option value="hebdo">Repetition hebdomadaire</option>
+                <option value="quotidien">Repetition quotidienne</option>
+              </select>
+            </div>
+
+            <div id="recurrence-jours" style="display:none; margin-bottom:1.1rem;">
+              <label style="font-size:0.72rem; font-weight:600; color:var(--gris-fort); text-transform:uppercase; letter-spacing:0.07em; display:block; margin-bottom:0.5rem;">Jours de repetition</label>
+              <div class="recurrence-options">
+                <div class="day-btn" onclick="toggleDay(this)">Lun</div>
+                <div class="day-btn" onclick="toggleDay(this)">Mar</div>
+                <div class="day-btn" onclick="toggleDay(this)">Mer</div>
+                <div class="day-btn" onclick="toggleDay(this)">Jeu</div>
+                <div class="day-btn" onclick="toggleDay(this)">Ven</div>
+                <div class="day-btn" onclick="toggleDay(this)">Sam</div>
+                <div class="day-btn" onclick="toggleDay(this)">Dim</div>
+              </div>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- Véhicule et places -->
+            <div class="form-divider-label">Vehicule et places</div>
+
+            <div class="form-row-3">
+              <div class="field">
+                <label>Type de vehicule <span class="field-req">*</span></label>
+                <select id="type-vehicule" onchange="updateTarif()">
+                  <option value="">Selectionner</option>
+                  <option value="moto">Moto</option>
+                  <option value="voiture">Voiture</option>
+                </select>
+                <div class="field-error-msg" id="err-vehicule">Champ obligatoire</div>
+              </div>
+              <div class="field">
+                <label>Places disponibles <span class="field-req">*</span></label>
+                <select id="places-dispo" onchange="updateTarif()">
+                  <option value="">Selectionner</option>
+                  <option value="1">1 place</option>
+                  <option value="2">2 places</option>
+                  <option value="3">3 places</option>
+                  <option value="4">4 places</option>
+                </select>
+                <div class="field-error-msg" id="err-places">Champ obligatoire</div>
+              </div>
+              <div class="field">
+                <label>Participation par personne <span class="field-req">*</span></label>
+                <div class="input-wrap has-icon">
+                  <svg class="field-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                  <input type="number" id="tarif" placeholder="FCFA" min="0" oninput="updateTarifPreview()"/>
+                </div>
+                <div class="field-error-msg" id="err-tarif">Champ obligatoire</div>
+              </div>
+            </div>
+
+            <!-- Preview tarif -->
+            <div class="tarif-preview" id="tarif-preview" style="display:none;">
+              <div class="tarif-label">Estimation totale du trajet partage</div>
+              <div class="tarif-val" id="tarif-total">0 FCFA</div>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- Options et description -->
+            <div class="form-divider-label">Details supplementaires</div>
+
+            <div class="field">
+              <label>Description du trajet</label>
+              <textarea id="description" rows="3" placeholder="Ex : Je pars tous les matins de l'UAC vers Cotonou. Je m'arrete au carrefour Cadjehoun. Ponctuel, je respecte les horaires. Contact via messagerie uniquement."></textarea>
+              <div class="field-hint">Une description claire augmente vos chances de trouver des passagers</div>
+            </div>
+
+            <div class="form-divider-label">Options du trajet</div>
+            <div class="check-options">
+              <label class="check-item">
+                <input type="checkbox" id="opt-bagage"/>
+                Bagages acceptes (petit sac uniquement)
+              </label>
+              <label class="check-item">
+                <input type="checkbox" id="opt-femme" checked/>
+                Trajet ouvert aux etudiantes uniquement (option securite)
+              </label>
+              <label class="check-item">
+                <input type="checkbox" id="opt-flexible"/>
+                Horaire flexible — accepte de partir 15 minutes plus tot ou plus tard
+              </label>
+              <label class="check-item">
+                <input type="checkbox" id="opt-recurrent"/>
+                Je propose ce trajet regulierement chaque semaine
+              </label>
+            </div>
+
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-annuler" onclick="resetForm()">Reinitialiser</button>
+            <button class="btn-publier" id="btn-publier" onclick="publierTrajet()">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span class="btn-text">Publier le trajet</span>
+              <div class="loader"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- COLONNE DROITE -->
+        <div class="right-col">
+
+          <!-- Mes trajets recents -->
+          <div class="widget">
+            <div class="widget-header">
+              <div class="widget-title">Mes trajets recents</div>
+              <a href="#" class="widget-link" onclick="showView('mes-trajets'); return false;">Voir tout</a>
+            </div>
+            <div class="widget-body" id="widget-trajets-recents">
+                <div class="trajet-item-meta">
+                  <span class="trajet-meta-tag tag-actif">Actif</span>
+                  <span class="trajet-meta-date">Aujourd'hui, 07h30</span>
+                </div>
+                <div class="trajet-item-places">1 place restante sur 1</div>
+              </div>
+              <div class="trajet-item">
+                <div class="trajet-item-route">UAC — Porto-Novo</div>
+                <div class="trajet-item-meta">
+                  <span class="trajet-meta-tag tag-complet">Complet</span>
+                  <span class="trajet-meta-date">Hier, 17h00</span>
+                </div>
+                <div class="trajet-item-places">0 place restante sur 1</div>
+              </div>
+              <div class="trajet-item">
+                <div class="trajet-item-route">UAC — Cotonou Akpakpa</div>
+                <div class="trajet-item-meta">
+                  <span class="trajet-meta-tag tag-termine">Termine</span>
+                  <span class="trajet-meta-date">12 juin, 08h00</span>
+                </div>
+                <div class="trajet-item-places">1 passager transporte</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Demandes en attente -->
+          <div class="widget">
+            <div class="widget-header">
+              <div class="widget-title">Demandes en attente</div>
+              <a href="#" class="widget-link" onclick="showView('demandes'); return false;">Voir tout</a>
+            </div>
+            <div class="widget-body" id="demandes-body">
+              <div class="demande-item" id="demande-1">
+                <div class="demande-passager">
+                  <div class="demande-avatar">AK</div>
+                  <div class="demande-name">Aissatou Kone</div>
+                </div>
+                <div class="demande-trajet">UAC — Cotonou Centre, aujourd'hui 07h30</div>
+                <div class="demande-actions">
+                  <button class="btn-accepter" onclick="repondre('demande-1','accepter')">Accepter</button>
+                  <button class="btn-refuser" onclick="repondre('demande-1','refuser')">Refuser</button>
+                </div>
+              </div>
+              <div class="demande-item" id="demande-2">
+                <div class="demande-passager">
+                  <div class="demande-avatar">MB</div>
+                  <div class="demande-name">Mathieu Boco</div>
+                </div>
+                <div class="demande-trajet">UAC — Cotonou Centre, aujourd'hui 07h30</div>
+                <div class="demande-actions">
+                  <button class="btn-accepter" onclick="repondre('demande-2','accepter')">Accepter</button>
+                  <button class="btn-refuser" onclick="repondre('demande-2','refuser')">Refuser</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conseil -->
+          <div class="conseil-card">
+            <div class="conseil-label">Conseil Voisin de Route</div>
+            <div class="conseil-text">
+              Publiez votre trajet <strong>la veille au soir</strong> pour maximiser vos chances de trouver des passagers. Les etudiants planifient leurs deplacements la nuit precedente.
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MES TRAJETS ── -->
+    <div class="view" id="view-mes-trajets">
+      <div class="page-header"><div><div class="page-title">Mes trajets</div><div class="page-subtitle">Historique et gestion de vos trajets publies</div></div></div>
+
+      <div class="trajet-filters">
+        <button class="filter-btn active" onclick="filterTrajets('tous', this)">Tous<span class="filter-count">3</span></button>
+        <button class="filter-btn" onclick="filterTrajets('actif', this)">Actifs<span class="filter-count">1</span></button>
+        <button class="filter-btn" onclick="filterTrajets('complet', this)">Complets<span class="filter-count">1</span></button>
+        <button class="filter-btn" onclick="filterTrajets('termine', this)">Termines<span class="filter-count">1</span></button>
+      </div>
+
+      <div id="mes-trajets-liste">
+        <p style="font-size:0.9rem; color:var(--gris-moyen);">Chargement de vos trajets...</p>
+      </div>
+
+    </div>
+
+    <!-- MODAL EVALUATION PASSAGER -->
+    <div class="success-overlay" id="modal-eval-passager">
+      <div class="success-modal" style="text-align:left;">
+        <h3 style="font-family:'Syne',sans-serif; font-size:1.15rem; font-weight:800; color:var(--noir); margin-bottom:0.4rem;">Evaluer le passager</h3>
+        <p style="font-size:0.85rem; color:var(--gris-moyen); line-height:1.65; margin-bottom:1.4rem;">Votre evaluation aide la communaute a identifier les passagers fiables et ponctuels.</p>
+
+        <div id="eval-passager-summary" style="background:var(--gris-leger); border-radius:10px; padding:1rem; margin-bottom:1.4rem; text-align:left;">
+          <div class="detail-row"><span class="detail-key">Passager</span><span class="detail-val" id="eval-passager-nom">Edwige Houngbo</span></div>
+          <div class="detail-row"><span class="detail-key">Trajet</span><span class="detail-val">UAC → Cotonou Akpakpa</span></div>
+        </div>
+
+        <div style="margin-bottom:1.2rem;">
+          <label style="display:block; font-size:0.72rem; font-weight:600; color:var(--gris-fort); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.5rem;">Note de ponctualite et comportement</label>
+          <div id="star-rating-passager" style="display:flex; gap:0.4rem; font-size:1.8rem; cursor:pointer;">
+            <span class="star-p" data-val="1">&#9734;</span>
+            <span class="star-p" data-val="2">&#9734;</span>
+            <span class="star-p" data-val="3">&#9734;</span>
+            <span class="star-p" data-val="4">&#9734;</span>
+            <span class="star-p" data-val="5">&#9734;</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1.4rem;">
+          <label style="display:block; font-size:0.72rem; font-weight:600; color:var(--gris-fort); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.5rem;">Commentaire (facultatif)</label>
+          <textarea id="eval-passager-comment" rows="3" placeholder="Ex : Passagere ponctuelle et courtoise, je recommande." style="width:100%; padding:0.7rem 0.9rem; border:1.5px solid var(--bordure); border-radius:8px; font-size:0.85rem; font-family:'Inter',sans-serif; outline:none; resize:vertical;"></textarea>
+        </div>
+
+        <div style="display:flex; gap:0.75rem;">
+          <button class="btn-annuler" style="flex:1;" onclick="fermerEvalPassager()">Annuler</button>
+          <button class="btn-publier" style="flex:2; justify-content:center;" onclick="confirmerEvalPassager()">
+            <span class="btn-text">Envoyer l'evaluation</span>
+            <div class="loader"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-demandes">
+      <div class="page-header"><div><div class="page-title">Demandes recues</div><div class="page-subtitle">Gerez les demandes de vos passagers</div></div></div>
+      <div class="form-card" style="padding:3rem; text-align:center;">
+        <div style="font-size:0.9rem; color:var(--gris-moyen); line-height:1.7;">Cette section est en cours de developpement.<br/>Elle affichera toutes les demandes de passagers avec options d'acceptation et de refus.</div>
+      </div>
+    </div>
+
+    <div class="view" id="view-messages">
+      <div class="page-header"><div><div class="page-title">Messages</div><div class="page-subtitle">Vos echanges avec les passagers</div></div></div>
+      <div class="form-card" style="padding:3rem; text-align:center;">
+        <div style="font-size:0.9rem; color:var(--gris-moyen); line-height:1.7;">La messagerie interne sera disponible dans la prochaine etape.</div>
+      </div>
+    </div>
+
+    <div class="view" id="view-gains">
+      <div class="page-header"><div><div class="page-title">Mes gains</div><div class="page-subtitle">Suivi des participations recues</div></div></div>
+      <div class="form-card" style="padding:3rem; text-align:center;">
+        <div style="font-size:0.9rem; color:var(--gris-moyen); line-height:1.7;">Cette section affichera le detail de vos revenus de covoiturage.</div>
+      </div>
+    </div>
+
+    <div class="view" id="view-profil">
+      <div class="page-header"><div><div class="page-title">Mon profil</div><div class="page-subtitle">Informations et avis recus de la communaute</div></div></div>
+
+      <div class="profil-grid">
+        <div class="form-card">
+          <div class="form-card-header">
+            <div class="form-card-header-icon">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <div class="form-card-header-title" id="profil-nom-complet">Chargement...</div>
+              <div class="form-card-header-sub" id="profil-univ-info"></div>
+            </div>
+          </div>
+          <div class="form-body">
+            <div class="profil-summary">
+              <div class="profil-stat">
+                <div class="profil-stat-val" id="profil-note-moyenne">—</div>
+                <div class="profil-stat-label">Note moyenne</div>
+              </div>
+              <div class="profil-stat">
+                <div class="profil-stat-val" id="profil-nb-evals">—</div>
+                <div class="profil-stat-label">Evaluations recues</div>
+              </div>
+              <div class="profil-stat">
+                <div class="profil-stat-val" id="profil-nb-trajets">—</div>
+                <div class="profil-stat-label">Trajets publies</div>
+              </div>
+            </div>
+
+            <div class="rating-breakdown" id="profil-rating-breakdown">
+              <p style="font-size:0.82rem; color:var(--gris-moyen);">Chargement de la repartition des notes...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Avis recus -->
+        <div class="form-card">
+          <div class="form-card-header">
+            <div class="form-card-header-icon">
+              <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div>
+              <div class="form-card-header-title">Avis recus des passagers</div>
+              <div class="form-card-header-sub">Visibles publiquement avant qu'un passager ne reserve</div>
+            </div>
+          </div>
+          <div class="form-body" style="padding-top:0.4rem;" id="profil-avis-liste">
+            <p style="font-size:0.85rem; color:var(--gris-moyen);">Chargement des avis...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL SUCCES -->
+<div class="success-overlay" id="success-overlay">
+  <div class="success-modal">
+    <div class="success-modal-icon">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h3>Trajet publie avec succes</h3>
+    <p>Votre trajet est maintenant visible par les etudiants. Vous serez notifie des qu'un passager fait une demande.</p>
+    <div class="success-modal-detail" id="success-detail"></div>
+    <button class="btn-modal" onclick="closeSuccess()">Retour au tableau de bord</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = 'https://awpzfrshobabhnriwkza.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_jR2L5ZmvqSrSBRdvWrluKQ_wL34_STO';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+  let currentProfile = null;
+
+  async function initDashboard() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'connexion.html';
+      return;
+    }
+    currentUser = session.user;
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (error || !profile || profile.role !== 'conducteur') {
+      window.location.href = 'connexion.html';
+      return;
+    }
+    currentProfile = profile;
+
+    const initiales = (profile.prenom[0] || '') + (profile.nom[0] || '');
+    document.getElementById('sidebar-avatar').textContent = initiales.toUpperCase();
+    document.getElementById('sidebar-nom').textContent = profile.prenom + ' ' + profile.nom;
+    document.getElementById('sidebar-statut').textContent =
+      profile.statut_verification === 'verifie' ? 'Compte verifie' : 'Verification en cours';
+    document.getElementById('topbar-avatar').textContent = initiales.toUpperCase();
+
+    chargerMesTrajets();
+    chargerDemandesRecues();
+    chargerProfilDetails();
+  }
+
+  async function chargerProfilDetails() {
+    document.getElementById('profil-nom-complet').textContent = currentProfile.prenom + ' ' + currentProfile.nom;
+    document.getElementById('profil-univ-info').textContent =
+      [currentProfile.universite, currentProfile.type_vehicule ? capitalize(currentProfile.type_vehicule) : null]
+        .filter(Boolean).join(' — ');
+
+    document.getElementById('profil-note-moyenne').textContent = currentProfile.note_moyenne > 0 ? currentProfile.note_moyenne : '—';
+    document.getElementById('profil-nb-evals').textContent = currentProfile.nombre_evaluations || 0;
+
+    const { count: nbTrajets } = await supabase
+      .from('trajets')
+      .select('id', { count: 'exact', head: true })
+      .eq('conducteur_id', currentUser.id);
+    document.getElementById('profil-nb-trajets').textContent = nbTrajets || 0;
+
+    const { data: evals } = await supabase
+      .from('evaluations')
+      .select('note, commentaire, created_at, evaluateur_id, profiles!evaluations_evaluateur_id_fkey(prenom, nom)')
+      .eq('evalue_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    // Repartition des notes
+    const breakdown = document.getElementById('profil-rating-breakdown');
+    const total = evals ? evals.length : 0;
+    if (total === 0) {
+      breakdown.innerHTML = '<p style="font-size:0.82rem; color:var(--gris-moyen);">Aucune evaluation recue pour le moment.</p>';
+    } else {
+      const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+      evals.forEach(e => counts[e.note]++);
+      breakdown.innerHTML = [5,4,3,2,1].map(n => {
+        const pct = Math.round((counts[n] / total) * 100);
+        return `<div class="rating-bar-row"><span>${n} etoile${n>1?'s':''}</span><div class="rating-bar"><div class="rating-bar-fill" style="width:${pct}%"></div></div><span>${counts[n]}</span></div>`;
+      }).join('');
+    }
+
+    // Liste des avis
+    const avisListe = document.getElementById('profil-avis-liste');
+    if (!evals || evals.length === 0) {
+      avisListe.innerHTML = '<p style="font-size:0.85rem; color:var(--gris-moyen);">Vous n\'avez pas encore recu d\'avis.</p>';
+    } else {
+      avisListe.innerHTML = evals.map(e => `
+        <div class="avis-item">
+          <div class="avis-header">
+            <div class="passager-avatar" style="width:32px; height:32px; font-size:0.7rem;">${(e.profiles.prenom[0] + e.profiles.nom[0]).toUpperCase()}</div>
+            <div class="avis-info">
+              <div class="avis-name">${e.profiles.prenom} ${e.profiles.nom}</div>
+              <div class="avis-stars">${'★'.repeat(e.note)}${'☆'.repeat(5 - e.note)}</div>
+            </div>
+            <div class="avis-date">${new Date(e.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</div>
+          </div>
+          ${e.commentaire ? `<div class="avis-text">${e.commentaire}</div>` : ''}
+        </div>
+      `).join('');
+    }
+  }
+
+  async function chargerMesTrajets() {
+    const { data: trajets, error } = await supabase
+      .from('trajets')
+      .select('*')
+      .eq('conducteur_id', currentUser.id)
+      .order('date_trajet', { ascending: false });
+
+    if (error) { showToast('Erreur lors du chargement des trajets.'); return; }
+
+    const widget = document.getElementById('widget-trajets-recents');
+    if (widget) {
+      if (!trajets || trajets.length === 0) {
+        widget.innerHTML = '<p style="font-size:0.85rem; color:var(--gris-moyen); padding:0.5rem 0;">Aucun trajet publie pour le moment.</p>';
+      } else {
+        widget.innerHTML = trajets.slice(0, 4).map(t => `
+          <div class="trajet-item">
+            <div class="trajet-item-route">${t.ville_depart} — ${t.ville_arrivee}</div>
+            <div class="trajet-item-meta">
+              <span class="trajet-meta-tag ${t.statut === 'actif' ? 'tag-actif' : t.statut === 'complet' ? 'tag-complet' : 'tag-termine'}">${capitalize(t.statut)}</span>
+              <span class="trajet-meta-date">${formatDateHeure(t.date_trajet, t.heure_depart)}</span>
+            </div>
+            <div class="trajet-item-places">${t.places_disponibles} place(s) restante(s) sur ${t.places_initiales}</div>
+          </div>
+        `).join('');
+      }
+    }
+
+    renderMesTrajetsComplet(trajets || []);
+  }
+
+  function renderMesTrajetsComplet(trajets) {
+    const container = document.getElementById('mes-trajets-liste');
+    if (!container) return;
+    if (trajets.length === 0) {
+      container.innerHTML = '<p style="font-size:0.9rem; color:var(--gris-moyen);">Vous n\'avez encore publie aucun trajet.</p>';
+      return;
+    }
+
+    const counts = { tous: trajets.length, actif: 0, complet: 0, termine: 0 };
+    trajets.forEach(t => { if (counts[t.statut] !== undefined) counts[t.statut]++; });
+    document.querySelectorAll('.trajet-filters .filter-btn').forEach((btn, i) => {
+      const keys = ['tous', 'actif', 'complet', 'termine'];
+      const c = btn.querySelector('.filter-count');
+      if (c) c.textContent = counts[keys[i]] || 0;
+    });
+
+    container.innerHTML = trajets.map(t => `
+      <div class="trajet-full-card" data-statut="${t.statut}">
+        <div class="trajet-full-left">
+          <span class="trajet-meta-tag ${t.statut === 'actif' ? 'tag-actif' : t.statut === 'complet' ? 'tag-complet' : 'tag-termine'}">${capitalize(t.statut)}</span>
+          <div class="trajet-full-route">${t.ville_depart} → ${t.ville_arrivee}</div>
+          <div class="trajet-full-meta">
+            <span>${formatDateHeure(t.date_trajet, t.heure_depart)}</span>
+            <span>${capitalize(t.type_vehicule)}</span>
+            <span>${t.prix_par_personne.toLocaleString('fr-FR')} FCFA / personne</span>
+          </div>
+          ${t.statut === 'termine' ? `<div class="passagers-a-evaluer" data-trajet-id="${t.id}"><p style="font-size:0.78rem; color:var(--gris-moyen); margin-top:0.8rem;">Chargement des passagers...</p></div>` : ''}
+        </div>
+        <div class="trajet-full-right">
+          <div class="trajet-full-places">${t.places_disponibles} place(s) restante(s) sur ${t.places_initiales}</div>
+        </div>
+      </div>
+    `).join('');
+
+    trajets.filter(t => t.statut === 'termine').forEach(t => chargerPassagersAEvaluer(t.id));
+  }
+
+  async function chargerPassagersAEvaluer(trajetId) {
+    const { data: reservations } = await supabase
+      .from('reservations')
+      .select('id, passager_id, profiles!reservations_passager_id_fkey(prenom, nom)')
+      .eq('trajet_id', trajetId)
+      .eq('statut', 'acceptee');
+
+    const zone = document.querySelector(`.passagers-a-evaluer[data-trajet-id="${trajetId}"]`);
+    if (!zone) return;
+    if (!reservations || reservations.length === 0) {
+      zone.innerHTML = '';
+      return;
+    }
+
+    // Verifier quelles evaluations existent deja
+    const { data: evals } = await supabase
+      .from('evaluations')
+      .select('reservation_id')
+      .eq('evaluateur_id', currentUser.id);
+    const dejaEvalues = new Set((evals || []).map(e => e.reservation_id));
+
+    zone.innerHTML = reservations.map(r => `
+      <div class="passager-row">
+        <div class="passager-info">
+          <div class="passager-avatar">${(r.profiles.prenom[0] + r.profiles.nom[0]).toUpperCase()}</div>
+          <div>
+            <div class="passager-name">${r.profiles.prenom} ${r.profiles.nom}</div>
+            <div class="passager-sub">Passager(e) de ce trajet</div>
+          </div>
+        </div>
+        ${dejaEvalues.has(r.id)
+          ? '<button class="btn-evaluer-passager done">Passager evalue</button>'
+          : `<button class="btn-evaluer-passager" onclick="ouvrirEvalPassager(this, '${r.id}', '${r.passager_id}', '${r.profiles.prenom} ${r.profiles.nom}')">Evaluer ce passager</button>`}
+      </div>
+    `).join('');
+  }
+
+  async function chargerDemandesRecues() {
+    const { data: trajetsIds } = await supabase
+      .from('trajets')
+      .select('id')
+      .eq('conducteur_id', currentUser.id);
+
+    if (!trajetsIds || trajetsIds.length === 0) {
+      document.getElementById('demandes-body').innerHTML = '<p style="font-size:0.85rem; color:var(--gris-moyen);">Aucune demande pour le moment.</p>';
+      return;
+    }
+
+    const ids = trajetsIds.map(t => t.id);
+
+    const { data: reservations, error } = await supabase
+      .from('reservations')
+      .select('*, trajets(*), profiles!reservations_passager_id_fkey(prenom, nom)')
+      .in('trajet_id', ids)
+      .eq('statut', 'en_attente');
+
+    if (error) { console.error(error); return; }
+
+    const body = document.getElementById('demandes-body');
+    if (!reservations || reservations.length === 0) {
+      body.innerHTML = '<p style="font-size:0.85rem; color:var(--gris-moyen);">Aucune demande en attente.</p>';
+      return;
+    }
+
+    body.innerHTML = reservations.map(r => `
+      <div class="demande-item" id="demande-${r.id}">
+        <div class="demande-passager">
+          <div class="demande-avatar">${(r.profiles.prenom[0] + r.profiles.nom[0]).toUpperCase()}</div>
+          <div class="demande-name">${r.profiles.prenom} ${r.profiles.nom}</div>
+        </div>
+        <div class="demande-trajet">${r.trajets.ville_depart} — ${r.trajets.ville_arrivee}, ${formatDateHeure(r.trajets.date_trajet, r.trajets.heure_depart)}</div>
+        <div class="demande-actions">
+          <button class="btn-accepter" onclick="repondre('${r.id}','acceptee')">Accepter</button>
+          <button class="btn-refuser" onclick="repondre('${r.id}','refusee')">Refuser</button>
+        </div>
+      </div>
+    `).join('');
+
+    const badge = document.querySelector('[onclick="showView(\'demandes\')"] .nav-badge');
+    if (badge) badge.textContent = reservations.length;
+  }
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+  function formatDateHeure(date, heure) {
+    const d = new Date(date + 'T00:00:00');
+    const aujourd = new Date(); aujourd.setHours(0,0,0,0);
+    const demain = new Date(aujourd); demain.setDate(demain.getDate() + 1);
+    let label;
+    if (d.getTime() === aujourd.getTime()) label = "Aujourd'hui";
+    else if (d.getTime() === demain.getTime()) label = "Demain";
+    else label = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    return label + ', ' + heure.slice(0,5);
+  }
+
+  /* Navigation entre vues */
+  const breadcrumbs = {
+    'publier':     '— Publier un trajet',
+    'mes-trajets': '— Mes trajets',
+    'demandes':    '— Demandes recues',
+    'messages':    '— Messages',
+    'gains':       '— Mes gains',
+    'profil':      '— Mon profil'
+  };
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.getElementById('breadcrumb-current').textContent = breadcrumbs[name] || '';
+    event.currentTarget && event.currentTarget.classList.add('active');
+  }
+
+  /* Tarif */
+  function updateTarif() { updateTarifPreview(); }
+
+  function updateTarifPreview() {
+    const tarif  = parseFloat(document.getElementById('tarif').value) || 0;
+    const places = parseInt(document.getElementById('places-dispo').value) || 0;
+    const preview = document.getElementById('tarif-preview');
+    const total   = document.getElementById('tarif-total');
+    if (tarif > 0 && places > 0) {
+      preview.style.display = 'flex';
+      total.textContent = (tarif * places).toLocaleString('fr-FR') + ' FCFA total partage';
+    } else {
+      preview.style.display = 'none';
+    }
+  }
+
+  /* Recurrence */
+  function toggleRecurrence() {
+    const val = document.getElementById('recurrence').value;
+    document.getElementById('recurrence-jours').style.display = val === 'hebdo' ? 'block' : 'none';
+  }
+
+  function toggleDay(el) { el.classList.toggle('selected'); }
+
+  /* Validation */
+  function validateForm() {
+    let ok = true;
+    const checks = [
+      ['ville-depart',  'err-depart',   v => !!v],
+      ['ville-arrivee', 'err-arrivee',  v => !!v],
+      ['date-trajet',   'err-date',     v => !!v],
+      ['heure-depart',  'err-heure',    v => !!v],
+      ['type-vehicule', 'err-vehicule', v => !!v],
+      ['places-dispo',  'err-places',   v => !!v],
+      ['tarif',         'err-tarif',    v => parseFloat(v) > 0],
+    ];
+    checks.forEach(([id, errId, fn]) => {
+      const el  = document.getElementById(id);
+      const err = document.getElementById(errId);
+      const fail = !fn(el.value);
+      if (err) err.classList.toggle('visible', fail);
+      if (fail) ok = false;
+    });
+    return ok;
+  }
+
+  /* Publication */
+  async function publierTrajet() {
+    if (!validateForm()) {
+      showToast('Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+    const btn = document.getElementById('btn-publier');
+    btn.classList.add('loading'); btn.disabled = true;
+
+    const depart  = document.getElementById('ville-depart').value;
+    const arrivee = document.getElementById('ville-arrivee').value;
+    const date    = document.getElementById('date-trajet').value;
+    const heure   = document.getElementById('heure-depart').value;
+    const tarif   = parseInt(document.getElementById('tarif').value);
+    const places  = parseInt(document.getElementById('places-dispo').value);
+    const vehicule = document.getElementById('type-vehicule').value;
+    const departPrecis = document.getElementById('depart-precis').value.trim() || null;
+    const arriveePrecis = document.getElementById('arrivee-precis').value.trim() || null;
+    const description = document.getElementById('description').value.trim() || null;
+
+    const nouveauTrajet = {
+      conducteur_id: currentUser.id,
+      ville_depart: depart,
+      ville_arrivee: arrivee,
+      point_depart_precis: departPrecis,
+      point_arrivee_precis: arriveePrecis,
+      date_trajet: date,
+      heure_depart: heure,
+      type_vehicule: vehicule,
+      places_disponibles: places,
+      places_initiales: places,
+      prix_par_personne: tarif,
+      description: description,
+      bagages_acceptes: document.getElementById('opt-bagage').checked,
+      etudiantes_uniquement: document.getElementById('opt-femme').checked,
+      horaire_flexible: document.getElementById('opt-flexible').checked,
+      trajet_recurrent: document.getElementById('opt-recurrent').checked
+    };
+
+    const { data, error } = await supabase.from('trajets').insert(nouveauTrajet).select().single();
+
+    btn.classList.remove('loading'); btn.disabled = false;
+
+    if (error) {
+      showToast('Erreur lors de la publication : ' + error.message);
+      return;
+    }
+
+    document.getElementById('success-detail').innerHTML = `
+      <div class="detail-row"><span class="detail-key">Itineraire</span><span class="detail-val">${depart.split('—')[0]} → ${arrivee.split('—')[0]}</span></div>
+      <div class="detail-row"><span class="detail-key">Date</span><span class="detail-val">${new Date(date).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'})}</span></div>
+      <div class="detail-row"><span class="detail-key">Heure</span><span class="detail-val">${heure}</span></div>
+      <div class="detail-row"><span class="detail-key">Vehicule</span><span class="detail-val">${vehicule.charAt(0).toUpperCase() + vehicule.slice(1)}</span></div>
+      <div class="detail-row"><span class="detail-key">Places</span><span class="detail-val">${places} place${places > 1 ? 's' : ''}</span></div>
+      <div class="detail-row"><span class="detail-key">Participation</span><span class="detail-val">${tarif.toLocaleString('fr-FR')} FCFA / personne</span></div>
+    `;
+    document.getElementById('success-overlay').classList.add('visible');
+    chargerMesTrajets();
+  }
+
+  function closeSuccess() {
+    document.getElementById('success-overlay').classList.remove('visible');
+    resetForm();
+  }
+
+  function resetForm() {
+    ['ville-depart','ville-arrivee','date-trajet','heure-depart','type-vehicule','places-dispo','tarif','description','depart-precis','arrivee-precis'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('tarif-preview').style.display = 'none';
+    document.getElementById('recurrence-jours').style.display = 'none';
+    document.querySelectorAll('.field-error-msg').forEach(e => e.classList.remove('visible'));
+  }
+
+  /* Demandes */
+  async function repondre(id, action) {
+    const el = document.getElementById('demande-' + id);
+    const nom = el.querySelector('.demande-name').textContent;
+
+    const { error } = await supabase
+      .from('reservations')
+      .update({ statut: action })
+      .eq('id', id);
+
+    if (error) {
+      showToast('Erreur lors de la mise a jour : ' + error.message);
+      return;
+    }
+
+    el.style.opacity = '0.5';
+    el.style.pointerEvents = 'none';
+    setTimeout(() => el.remove(), 300);
+
+    if (action === 'acceptee') {
+      showToast(nom + ' a ete notifie(e) — sa reservation est confirmee.', 'success');
+    } else {
+      showToast(nom + ' a ete notifie(e) du refus.', '');
+    }
+
+    setTimeout(() => {
+      const badge = document.querySelector('[onclick="showView(\'demandes\')"] .nav-badge');
+      const remaining = document.querySelectorAll('#demandes-body .demande-item').length;
+      if (badge) {
+        if (remaining > 0) badge.textContent = remaining;
+        else badge.style.display = 'none';
+      }
+    }, 350);
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = type === 'success' ? 'var(--vert)' : 'var(--rouge)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  /* Date min = aujourd'hui */
+  document.getElementById('date-trajet').min = new Date().toISOString().split('T')[0];
+
+  /* Filtres Mes trajets */
+  function filterTrajets(statut, btn) {
+    document.querySelectorAll('.trajet-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.trajet-full-card').forEach(card => {
+      card.style.display = (statut === 'tous' || card.dataset.statut === statut) ? 'flex' : 'none';
+    });
+  }
+
+  /* Evaluation du passager */
+  let selectedRatingPassager = 0;
+  let evalPassagerBtn = null;
+  let evalReservationId = null;
+  let evalPassagerId = null;
+
+  function ouvrirEvalPassager(btn, reservationId, passagerId, nomPassager) {
+    selectedRatingPassager = 0;
+    document.querySelectorAll('#star-rating-passager .star-p').forEach(s => {
+      s.innerHTML = '&#9734;'; s.style.color = 'var(--gris-moyen)';
+    });
+    document.getElementById('eval-passager-comment').value = '';
+    document.getElementById('eval-passager-nom').textContent = nomPassager || '';
+    document.getElementById('modal-eval-passager').classList.add('visible');
+    evalPassagerBtn = btn;
+    evalReservationId = reservationId;
+    evalPassagerId = passagerId;
+  }
+
+  function fermerEvalPassager() {
+    document.getElementById('modal-eval-passager').classList.remove('visible');
+  }
+
+  async function confirmerEvalPassager() {
+    if (selectedRatingPassager === 0) {
+      showToast('Merci de selectionner une note avant de valider.');
+      return;
+    }
+    const commentaire = document.getElementById('eval-passager-comment').value.trim() || null;
+
+    const { error } = await supabase.from('evaluations').insert({
+      reservation_id: evalReservationId,
+      evaluateur_id: currentUser.id,
+      evalue_id: evalPassagerId,
+      note: selectedRatingPassager,
+      commentaire: commentaire
+    });
+
+    if (error) {
+      showToast('Erreur lors de l\'envoi de l\'evaluation : ' + error.message);
+      return;
+    }
+
+    fermerEvalPassager();
+    if (evalPassagerBtn) {
+      evalPassagerBtn.textContent = 'Passager evalue';
+      evalPassagerBtn.classList.add('done');
+      evalPassagerBtn.onclick = null;
+    }
+    showToast('Evaluation envoyee. Merci pour votre retour.', 'success');
+  }
+
+  /* Etoiles passager */
+  document.querySelectorAll('#star-rating-passager .star-p').forEach(star => {
+    star.addEventListener('click', () => {
+      selectedRatingPassager = parseInt(star.dataset.val);
+      document.querySelectorAll('#star-rating-passager .star-p').forEach(s => {
+        const val = parseInt(s.dataset.val);
+        s.innerHTML = val <= selectedRatingPassager ? '&#9733;' : '&#9734;';
+        s.style.color = val <= selectedRatingPassager ? 'var(--jaune)' : 'var(--gris-moyen)';
+      });
+    });
+  });
+
+  /* Fermer modal eval passager en cliquant a l'exterieur */
+  document.getElementById('modal-eval-passager').addEventListener('click', e => {
+    if (e.target.id === 'modal-eval-passager') fermerEvalPassager();
+  });
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = 'connexion.html';
+  }
+
+  initDashboard();
+</script>
+</body>
+</html>

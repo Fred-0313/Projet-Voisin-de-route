@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voisin de Route — Covoiturage etudiant au Benin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --vert:        #1A7A46;
+      --vert-fonce:  #0F5230;
+      --vert-clair:  #EBF5EF;
+      --jaune:       #E8B400;
+      --jaune-pale:  #FDF8E3;
+      --noir:        #111418;
+      --gris-fort:   #3D4452;
+      --gris-moyen:  #6C7585;
+      --gris-leger:  #F2F4F7;
+      --blanc:       #FFFFFF;
+      --bordure:     #E2E6EC;
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--noir);
+      background: var(--blanc);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 6%;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid var(--bordure);
+      backdrop-filter: blur(10px);
+    }
+
+    .nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.15rem; font-weight: 800;
+      color: var(--vert-fonce); text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .nav-logo span { color: var(--jaune); }
+
+    .nav-links { display: flex; gap: 2.4rem; list-style: none; }
+    .nav-links a {
+      font-size: 0.875rem; font-weight: 500;
+      color: var(--gris-fort); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--vert); }
+
+    .nav-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+    .btn-ghost {
+      font-size: 0.875rem; font-weight: 600;
+      color: var(--vert); text-decoration: none;
+      padding: 0.45rem 1rem;
+      border: 1.5px solid var(--vert);
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .btn-ghost:hover { background: var(--vert); color: var(--blanc); }
+
+    .btn-solid {
+      font-size: 0.875rem; font-weight: 600;
+      background: var(--vert); color: var(--blanc);
+      padding: 0.45rem 1.1rem; border-radius: 6px;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-solid:hover { background: var(--vert-fonce); transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: grid; grid-template-columns: 1fr 1fr;
+      align-items: center;
+      padding: 100px 6% 60px;
+      gap: 4rem;
+      background: var(--blanc);
+      position: relative;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute; top: 0; right: 0;
+      width: 48%; height: 100%;
+      background: var(--vert-clair);
+      z-index: 0;
+    }
+
+    .hero-left { position: relative; z-index: 1; }
+    .hero-right { position: relative; z-index: 1; }
+
+    .hero-eyebrow {
+      display: inline-block;
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--vert);
+      border-left: 3px solid var(--jaune);
+      padding-left: 0.7rem;
+      margin-bottom: 1.6rem;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2.4rem, 4.5vw, 3.6rem);
+      font-weight: 800; line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--noir);
+      margin-bottom: 1.4rem;
+    }
+
+    .hero h1 mark {
+      background: none;
+      color: var(--vert);
+      position: relative;
+    }
+
+    .hero h1 mark::after {
+      content: '';
+      position: absolute; left: 0; bottom: 2px; right: 0;
+      height: 4px; background: var(--jaune); border-radius: 2px;
+      opacity: 0.7;
+    }
+
+    .hero-desc {
+      font-size: 1.05rem; line-height: 1.75;
+      color: var(--gris-moyen);
+      max-width: 440px; margin-bottom: 2.4rem;
+    }
+
+    .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .btn-hero-primary {
+      background: var(--vert); color: var(--blanc);
+      padding: 0.85rem 2rem; border-radius: 8px;
+      font-weight: 600; font-size: 0.95rem;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      letter-spacing: 0.01em;
+    }
+    .btn-hero-primary:hover {
+      background: var(--vert-fonce);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(26,122,70,0.25);
+    }
+
+    .btn-hero-secondary {
+      background: transparent; color: var(--noir);
+      padding: 0.85rem 2rem; border-radius: 8px;
+      font-weight: 600; font-size: 0.95rem;
+      text-decoration: none;
+      border: 1.5px solid var(--bordure);
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-hero-secondary:hover { border-color: var(--vert); color: var(--vert); }
+
+    .hero-metrics {
+      display: flex; gap: 2.5rem; margin-top: 3.2rem;
+      padding-top: 2.4rem; border-top: 1px solid var(--bordure);
+    }
+    .metric-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem; font-weight: 800;
+      color: var(--noir); line-height: 1;
+    }
+    .metric-val span { color: var(--vert); }
+    .metric-label { font-size: 0.8rem; color: var(--gris-moyen); margin-top: 0.3rem; }
+
+    /* Carte visuelle cote droit */
+    .hero-card {
+      background: var(--blanc);
+      border-radius: 16px;
+      box-shadow: 0 2px 40px rgba(0,0,0,0.10);
+      overflow: hidden;
+      max-width: 420px; margin-left: auto;
+    }
+
+    .card-header {
+      background: var(--vert-fonce);
+      padding: 1.4rem 1.6rem;
+    }
+    .card-header-label {
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); margin-bottom: 0.3rem;
+    }
+    .card-header-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.05rem; font-weight: 700; color: var(--blanc);
+    }
+
+    .card-body { padding: 1.4rem 1.6rem; }
+
+    .card-field { margin-bottom: 1rem; }
+    .card-field label {
+      display: block; font-size: 0.72rem; font-weight: 600;
+      color: var(--gris-moyen); text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 0.4rem;
+    }
+    .card-field input, .card-field select {
+      width: 100%; padding: 0.7rem 0.9rem;
+      border: 1.5px solid var(--bordure); border-radius: 8px;
+      font-size: 0.9rem; font-family: 'Inter', sans-serif;
+      color: var(--noir); background: var(--blanc);
+      outline: none; transition: border-color 0.2s;
+    }
+    .card-field input:focus, .card-field select:focus {
+      border-color: var(--vert);
+    }
+    .card-field input::placeholder { color: #B0B8C4; }
+
+    .card-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+
+    .card-submit {
+      width: 100%; margin-top: 0.4rem;
+      background: var(--jaune); color: var(--noir);
+      padding: 0.85rem; border-radius: 8px;
+      border: none; cursor: pointer;
+      font-weight: 700; font-size: 0.9rem;
+      font-family: 'Syne', sans-serif;
+      letter-spacing: 0.02em;
+      transition: background 0.2s, transform 0.15s;
+      text-decoration: none; display: block; text-align: center;
+    }
+    .card-submit:hover { background: #D4A500; transform: translateY(-1px); }
+
+    .card-note {
+      text-align: center; margin-top: 0.9rem;
+      font-size: 0.78rem; color: var(--gris-moyen);
+    }
+    .card-note a { color: var(--vert); text-decoration: none; font-weight: 600; }
+
+    /* Badges trajets rapides */
+    .quick-routes {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.2rem;
+      padding-top: 1.2rem; border-top: 1px solid var(--bordure);
+    }
+    .quick-route {
+      font-size: 0.78rem; font-weight: 500;
+      background: var(--vert-clair); color: var(--vert-fonce);
+      padding: 0.3rem 0.75rem; border-radius: 50px;
+      cursor: default; transition: background 0.2s;
+    }
+
+    /* ── BANDE CHIFFRES ── */
+    .band {
+      background: var(--vert-fonce);
+      padding: 3rem 6%;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1rem; text-align: center;
+    }
+    .band-item { border-right: 1px solid rgba(255,255,255,0.1); }
+    .band-item:last-child { border-right: none; }
+    .band-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem; font-weight: 800; color: var(--jaune);
+    }
+    .band-desc { font-size: 0.82rem; color: rgba(255,255,255,0.6); margin-top: 0.3rem; }
+
+    /* ── SECTIONS GENERIQUES ── */
+    .section { padding: 90px 6%; }
+
+    .section-eyebrow {
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--vert);
+      border-left: 3px solid var(--jaune);
+      padding-left: 0.7rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      font-weight: 800; letter-spacing: -0.025em;
+      color: var(--noir); line-height: 1.15;
+      margin-bottom: 0.9rem;
+    }
+
+    .section-sub {
+      font-size: 1rem; color: var(--gris-moyen);
+      line-height: 1.75; max-width: 500px; margin-bottom: 3rem;
+    }
+
+    /* ── ETAPES ── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0; position: relative;
+    }
+
+    .steps-grid::before {
+      content: '';
+      position: absolute; top: 28px; left: 12%; right: 12%; height: 1px;
+      background: var(--bordure); z-index: 0;
+    }
+
+    .step {
+      position: relative; z-index: 1;
+      padding: 0 1.2rem; text-align: center;
+    }
+
+    .step-num {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--blanc);
+      border: 2px solid var(--vert);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem; font-weight: 800; color: var(--vert);
+      margin: 0 auto 1.4rem;
+    }
+
+    .step:nth-child(2) .step-num { background: var(--vert); color: var(--blanc); }
+
+    .step h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem; font-weight: 700;
+      color: var(--noir); margin-bottom: 0.5rem;
+    }
+    .step p { font-size: 0.85rem; color: var(--gris-moyen); line-height: 1.65; }
+
+    /* ── TRAJETS ── */
+    .routes-section { background: var(--gris-leger); }
+
+    .routes-header {
+      display: flex; justify-content: space-between;
+      align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+    }
+
+    .route-filters { display: flex; gap: 0.5rem; }
+    .filter-btn {
+      padding: 0.45rem 1.1rem; border-radius: 50px;
+      border: 1.5px solid var(--bordure);
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--gris-fort); background: var(--blanc);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      border-color: var(--vert); color: var(--vert);
+      background: var(--vert-clair);
+    }
+
+    .routes-table {
+      background: var(--blanc); border-radius: 12px;
+      border: 1px solid var(--bordure);
+      overflow: hidden;
+    }
+
+    .routes-table-head {
+      display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1.2fr;
+      padding: 0.75rem 1.5rem;
+      background: var(--gris-leger);
+      border-bottom: 1px solid var(--bordure);
+      font-size: 0.72rem; font-weight: 600;
+      color: var(--gris-moyen); text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .route-row {
+      display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 1.2fr;
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid var(--bordure);
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .route-row:last-child { border-bottom: none; }
+    .route-row:hover { background: var(--vert-clair); }
+
+    .route-city { font-weight: 600; font-size: 0.9rem; color: var(--noir); }
+    .route-time { font-size: 0.85rem; color: var(--gris-moyen); }
+    .route-mode {
+      font-size: 0.78rem; font-weight: 600;
+      color: var(--vert-fonce); background: var(--vert-clair);
+      padding: 0.25rem 0.65rem; border-radius: 4px;
+      display: inline-block;
+    }
+    .route-eco {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem; font-weight: 700; color: var(--vert);
+    }
+    .route-cta {
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--vert); text-decoration: none;
+      border: 1.5px solid var(--vert); border-radius: 6px;
+      padding: 0.35rem 0.85rem; transition: all 0.2s;
+      display: inline-block; text-align: center;
+    }
+    .route-cta:hover { background: var(--vert); color: var(--blanc); }
+
+    /* ── POURQUOI ── */
+    .why-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .why-card {
+      padding: 2rem;
+      border: 1px solid var(--bordure);
+      border-radius: 12px;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    .why-card:hover {
+      border-color: var(--vert);
+      box-shadow: 0 8px 28px rgba(26,122,70,0.09);
+      transform: translateY(-3px);
+    }
+
+    .why-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px; background: var(--vert-clair);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1.3rem;
+    }
+
+    .why-icon svg { width: 22px; height: 22px; stroke: var(--vert); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .why-card h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem; font-weight: 700;
+      color: var(--noir); margin-bottom: 0.5rem;
+    }
+    .why-card p { font-size: 0.85rem; color: var(--gris-moyen); line-height: 1.7; }
+
+    /* ── INSCRIPTION ── */
+    .signup-section {
+      background: var(--vert-fonce);
+      padding: 90px 6%;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5rem; align-items: center;
+    }
+
+    .signup-left h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      font-weight: 800; color: var(--blanc);
+      line-height: 1.15; margin-bottom: 1rem;
+    }
+    .signup-left h2 span { color: var(--jaune); }
+    .signup-left p { font-size: 0.95rem; color: rgba(255,255,255,0.65); line-height: 1.75; margin-bottom: 2rem; }
+
+    .signup-left-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .btn-signup-primary {
+      background: var(--jaune); color: var(--noir);
+      padding: 0.85rem 2rem; border-radius: 8px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 0.95rem;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-signup-primary:hover { background: #D4A500; transform: translateY(-2px); }
+
+    .btn-signup-secondary {
+      background: transparent; color: var(--blanc);
+      padding: 0.85rem 2rem; border-radius: 8px;
+      font-weight: 600; font-size: 0.95rem;
+      text-decoration: none;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-signup-secondary:hover { border-color: var(--blanc); background: rgba(255,255,255,0.06); }
+
+    /* Carte avantages a droite */
+    .signup-right {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px; padding: 2.2rem;
+    }
+
+    .signup-right-item {
+      display: flex; align-items: flex-start; gap: 0.9rem;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .signup-right-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .signup-right-item:first-child { padding-top: 0; }
+
+    .signup-right-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: rgba(232,180,0,0.15);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .signup-right-icon svg {
+      width: 17px; height: 17px;
+      stroke: var(--jaune); fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .signup-right-text { font-size: 0.85rem; color: rgba(255,255,255,0.75); line-height: 1.6; }
+    .signup-right-text strong { color: var(--blanc); font-family: 'Syne', sans-serif; display: block; margin-bottom: 0.15rem; font-size: 0.9rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--noir);
+      padding: 4rem 6% 2rem;
+    }
+
+    .footer-top {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem; padding-bottom: 3rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .footer-brand-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem; font-weight: 800;
+      color: var(--blanc); margin-bottom: 0.8rem;
+    }
+    .footer-brand-name span { color: var(--jaune); }
+
+    .footer-brand p {
+      font-size: 0.85rem; color: rgba(255,255,255,0.45);
+      line-height: 1.75; max-width: 260px; margin-bottom: 1.5rem;
+    }
+
+    .footer-socials { display: flex; gap: 0.6rem; }
+    .soc-btn {
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.5); text-decoration: none;
+      font-size: 0.75rem; font-weight: 700;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .soc-btn:hover { border-color: var(--jaune); color: var(--jaune); }
+
+    .footer-col h4 {
+      font-size: 0.78rem; font-weight: 700; color: var(--blanc);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 1.2rem;
+    }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+    .footer-col a {
+      font-size: 0.85rem; color: rgba(255,255,255,0.45);
+      text-decoration: none; transition: color 0.2s;
+    }
+    .footer-col a:hover { color: var(--blanc); }
+
+    .footer-bottom {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 2rem; flex-wrap: wrap; gap: 1rem;
+      font-size: 0.78rem; color: rgba(255,255,255,0.3);
+    }
+
+    /* ── REVEAL ── */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.55s ease, transform 0.55s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero::after { display: none; }
+      .hero-card { max-width: 100%; }
+      .steps-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+      .steps-grid::before { display: none; }
+      .why-grid { grid-template-columns: 1fr 1fr; }
+      .signup-section { grid-template-columns: 1fr; gap: 3rem; }
+      .footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; }
+      .band { grid-template-columns: 1fr 1fr; }
+      .nav-links { display: none; }
+      .routes-table-head, .route-row { grid-template-columns: 2fr 2fr 1fr 1fr; }
+      .route-row > *:last-child { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .steps-grid { grid-template-columns: 1fr; }
+      .why-grid { grid-template-columns: 1fr; }
+      .band { grid-template-columns: 1fr 1fr; }
+      .footer-top { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="accueil.html" class="nav-logo">Voisin <span>de</span> Route</a>
+  <ul class="nav-links">
+    <li><a href="#comment">Comment ca marche</a></li>
+    <li><a href="#trajets">Trajets</a></li>
+    <li><a href="#pourquoi">Avantages</a></li>
+  </ul>
+  <div class="nav-actions">
+    <a href="connexion.html" class="btn-ghost">Se connecter</a>
+    <a href="inscription.html" class="btn-solid">Rejoindre</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">Plateforme de covoiturage etudiant — Benin</div>
+    <h1>Voyagez ensemble,<br/>payez <mark>deux fois</mark><br/>moins cher</h1>
+    <p class="hero-desc">Voisin de Route connecte les etudiants beninois pour partager leurs trajets en moto ou voiture. Simple, verife, economique.</p>
+    <div class="hero-actions">
+      <a href="inscription.html" class="btn-hero-primary">Creer un compte gratuit</a>
+      <a href="#comment" class="btn-hero-secondary">Voir comment ca marche</a>
+    </div>
+    <div class="hero-metrics">
+      <div>
+        <div class="metric-val"><span>0</span> FCFA</div>
+        <div class="metric-label">Pour s'inscrire</div>
+      </div>
+      <div>
+        <div class="metric-val"><span>50</span>%</div>
+        <div class="metric-label">D'economies en moyenne</div>
+      </div>
+      <div>
+        <div class="metric-val"><span>100</span>%</div>
+        <div class="metric-label">Etudiants verifies</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="hero-card">
+      <div class="card-header">
+        <div class="card-header-label">Recherche rapide</div>
+        <div class="card-header-title">Trouver un voisin de route</div>
+      </div>
+      <div class="card-body">
+        <div class="card-field">
+          <label>Depart</label>
+          <input type="text" placeholder="Ex : UAC Abomey-Calavi, Campus principal"/>
+        </div>
+        <div class="card-field">
+          <label>Destination</label>
+          <input type="text" placeholder="Ex : Cotonou, Carrefour Cadjehoun"/>
+        </div>
+        <div class="card-row">
+          <div class="card-field">
+            <label>Date du trajet</label>
+            <input type="date"/>
+          </div>
+          <div class="card-field">
+            <label>Mode de transport</label>
+            <select>
+              <option value="">Moto ou voiture</option>
+              <option>Moto uniquement</option>
+              <option>Voiture uniquement</option>
+            </select>
+          </div>
+        </div>
+        <a href="inscription.html" class="card-submit">Rechercher un trajet disponible</a>
+        <p class="card-note">Pas encore inscrit ? <a href="inscription.html">Creer un compte gratuit</a></p>
+        <div class="quick-routes">
+          <span class="quick-route">UAC → Cotonou</span>
+          <span class="quick-route">Cotonou → Porto-Novo</span>
+          <span class="quick-route">UAC → Parakou</span>
+          <span class="quick-route">Abomey → Cotonou</span>
+          <span class="quick-route">Cotonou → Lokossa</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BANDE CHIFFRES -->
+<div class="band">
+  <div class="band-item">
+    <div class="band-val">5 min</div>
+    <div class="band-desc">Pour trouver un voisin de route</div>
+  </div>
+  <div class="band-item">
+    <div class="band-val">12+</div>
+    <div class="band-desc">Villes et communes couvertes</div>
+  </div>
+  <div class="band-item">
+    <div class="band-val">50 %</div>
+    <div class="band-desc">D'economies sur chaque trajet</div>
+  </div>
+  <div class="band-item">
+    <div class="band-val">100 %</div>
+    <div class="band-desc">Gratuit pour les etudiants</div>
+  </div>
+</div>
+
+<!-- COMMENT CA MARCHE -->
+<section class="section" id="comment">
+  <div class="section-eyebrow">Processus</div>
+  <h2 class="section-title">Comment ca marche</h2>
+  <p class="section-sub">En quatre etapes, trouvez ou proposez un trajet partage entre etudiants dans tout le Benin.</p>
+  <div class="steps-grid reveal">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Creez votre profil</h3>
+      <p>Inscrivez-vous avec votre carte etudiante. Votre identite est verifiee pour garantir la securite de la communaute.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Cherchez ou publiez</h3>
+      <p>Indiquez votre point de depart, votre destination et votre horaire. La plateforme vous met en relation instantanement.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Confirmez le trajet</h3>
+      <p>Echangez via la messagerie integree, confirmez les details et convenez du point de retrouve.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3>Voyagez et evaluez</h3>
+      <p>Partagez les frais equitablement apres le trajet. Notez votre voisin pour maintenir la confiance.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TRAJETS POPULAIRES -->
+<section class="section routes-section" id="trajets">
+  <div class="routes-header">
+    <div>
+      <div class="section-eyebrow">Disponible maintenant</div>
+      <h2 class="section-title">Trajets populaires</h2>
+    </div>
+    <div class="route-filters">
+      <button class="filter-btn active" onclick="filterRoutes(this)">Tous</button>
+      <button class="filter-btn" onclick="filterRoutes(this)">Moto</button>
+      <button class="filter-btn" onclick="filterRoutes(this)">Voiture</button>
+    </div>
+  </div>
+
+  <div class="routes-table reveal">
+    <div class="routes-table-head">
+      <span>Depart</span>
+      <span>Destination</span>
+      <span>Mode</span>
+      <span>Economie</span>
+      <span>Action</span>
+    </div>
+    <div class="route-row">
+      <div><div class="route-city">UAC Abomey-Calavi</div><div class="route-time">Toute la journee</div></div>
+      <div><div class="route-city">Cotonou Centre</div><div class="route-time">Carrefour Cadjehoun</div></div>
+      <span class="route-mode">Moto</span>
+      <span class="route-eco">-50 %</span>
+      <a href="inscription.html" class="route-cta">Rejoindre</a>
+    </div>
+    <div class="route-row">
+      <div><div class="route-city">Cotonou</div><div class="route-time">Matin et soir</div></div>
+      <div><div class="route-city">Porto-Novo</div><div class="route-time">Campus UP</div></div>
+      <span class="route-mode">Moto</span>
+      <span class="route-eco">-45 %</span>
+      <a href="inscription.html" class="route-cta">Rejoindre</a>
+    </div>
+    <div class="route-row">
+      <div><div class="route-city">UAC Abomey-Calavi</div><div class="route-time">Departs le vendredi</div></div>
+      <div><div class="route-city">Parakou</div><div class="route-time">Centre-ville</div></div>
+      <span class="route-mode">Voiture</span>
+      <span class="route-eco">-55 %</span>
+      <a href="inscription.html" class="route-cta">Rejoindre</a>
+    </div>
+    <div class="route-row">
+      <div><div class="route-city">Abomey</div><div class="route-time">Flexible</div></div>
+      <div><div class="route-city">Cotonou</div><div class="route-time">Gare de Jericho</div></div>
+      <span class="route-mode">Moto</span>
+      <span class="route-eco">-48 %</span>
+      <a href="inscription.html" class="route-cta">Rejoindre</a>
+    </div>
+    <div class="route-row">
+      <div><div class="route-city">Cotonou</div><div class="route-time">Departs le weekend</div></div>
+      <div><div class="route-city">Lokossa</div><div class="route-time">Marche central</div></div>
+      <span class="route-mode">Voiture</span>
+      <span class="route-eco">-52 %</span>
+      <a href="inscription.html" class="route-cta">Rejoindre</a>
+    </div>
+    <div class="route-row">
+      <div><div class="route-city">UAC Abomey-Calavi</div><div class="route-time">Quotidien</div></div>
+      <div><div class="route-city">Departement du Plateau</div><div class="route-time">Pobe, Ketou</div></div>
+      <span class="route-mode">Moto</span>
+      <span class="route-eco">-50 %</span>
+      <a href="inscription.html" class="route-cta">Rejoindre</a>
+    </div>
+  </div>
+</section>
+
+<!-- POURQUOI -->
+<section class="section" id="pourquoi">
+  <div class="section-eyebrow">Nos engagements</div>
+  <h2 class="section-title">Pourquoi choisir Voisin de Route</h2>
+  <p class="section-sub">Une plateforme concue specifiquement pour la realite des etudiants beninois.</p>
+  <div class="why-grid reveal">
+    <div class="why-card">
+      <div class="why-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h3>Communaute verifiee</h3>
+      <p>Seuls les etudiants avec une carte universitaire valide peuvent s'inscrire. Vous voyagez uniquement avec des personnes identifiees.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <h3>Mise en relation rapide</h3>
+      <p>Trouvez un voisin disponible en moins de cinq minutes. La plateforme notifie automatiquement les conducteurs compatibles.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-icon">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <h3>Partage equitable des frais</h3>
+      <p>Le cout est calcule automatiquement et divise entre les passagers. Vous payez exactement votre part, rien de plus.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <h3>Couverture nationale</h3>
+      <p>Cotonou, Porto-Novo, Parakou, Abomey, Lokossa, Natitingou — toutes les villes universitaires du Benin sont couvertes.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-icon">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3>Esprit de communaute</h3>
+      <p>Plus qu'un service de transport — un reseau d'entraide entre etudiants qui se comprennent et se font confiance.</p>
+    </div>
+    <div class="why-card">
+      <div class="why-icon">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <h3>Concu pour le Benin</h3>
+      <p>Pensee par un etudiant beninois, pour les etudiants beninois. Chaque fonctionnalite repond a une realite locale concrete.</p>
+    </div>
+  </div>
+</section>
+
+<!-- INSCRIPTION -->
+<section class="signup-section" id="inscription">
+  <div class="signup-left">
+    <div class="section-eyebrow" style="border-left-color:var(--jaune); color:rgba(255,255,255,0.6);">Rejoindre la communaute</div>
+    <h2>Pret a voyager <span>deux fois moins cher</span> ?</h2>
+    <p>Creez votre compte gratuitement en moins de deux minutes. Choisissez votre profil — passager ou conducteur — et commencez a voyager avec vos camarades partout au Benin.</p>
+    <div class="signup-left-actions">
+      <a href="inscription.html" class="btn-signup-primary">Creer mon compte</a>
+      <a href="connexion.html" class="btn-signup-secondary">J'ai deja un compte</a>
+    </div>
+  </div>
+  <div class="signup-right">
+    <div class="signup-right-item">
+      <div class="signup-right-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="signup-right-text">
+        <strong>Inscription gratuite et verifiee</strong>
+        Carte etudiante requise — aucun frais pour rejoindre la plateforme.
+      </div>
+    </div>
+    <div class="signup-right-item">
+      <div class="signup-right-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="signup-right-text">
+        <strong>Tout se passe sur la plateforme</strong>
+        Demandes, confirmations et messagerie integrees, sans partage de numero.
+      </div>
+    </div>
+    <div class="signup-right-item">
+      <div class="signup-right-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div class="signup-right-text">
+        <strong>Disponible dans tout le Benin</strong>
+        Cotonou, Porto-Novo, Parakou, Abomey-Calavi et plus encore.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-brand-name">Voisin <span>de</span> Route</div>
+      <p>Le covoiturage entre etudiants beninois. Simple, verife, economique. Ensemble sur la route.</p>
+      <div class="footer-socials">
+        <a href="#" class="soc-btn">Fb</a>
+        <a href="#" class="soc-btn">Ig</a>
+        <a href="#" class="soc-btn">Tk</a>
+        <a href="#" class="soc-btn">Wa</a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Plateforme</h4>
+      <ul>
+        <li><a href="inscription.html">Creer un compte</a></li>
+        <li><a href="connexion.html">Se connecter</a></li>
+        <li><a href="#comment">Comment ca marche</a></li>
+        <li><a href="#pourquoi">Avantages</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Trajets</h4>
+      <ul>
+        <li><a href="#trajets">UAC — Cotonou</a></li>
+        <li><a href="#trajets">Cotonou — Porto-Novo</a></li>
+        <li><a href="#trajets">UAC — Parakou</a></li>
+        <li><a href="#trajets">Tous les trajets</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contact</h4>
+      <ul>
+        <li><a href="#">WhatsApp</a></li>
+        <li><a href="#">Facebook</a></li>
+        <li><a href="#">Email</a></li>
+        <li><a href="#">A propos</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>2025 Voisin de Route — Cotonou, Benin</span>
+    <span>Confidentialite — Conditions d'utilisation</span>
+  </div>
+</footer>
+
+<script>
+  function filterRoutes(btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const filter = btn.textContent.trim();
+    document.querySelectorAll('.route-row').forEach(row => {
+      const mode = row.querySelector('.route-mode').textContent.trim();
+      row.style.display = (filter === 'Tous' || filter === mode) ? 'grid' : 'none';
+    });
+  }
+
+  // Scroll reveal
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>

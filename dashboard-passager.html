@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voisin de Route — Tableau de bord Passager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --vert:        #1A7A46;
+      --vert-fonce:  #0F5230;
+      --vert-clair:  #EBF5EF;
+      --jaune:       #E8B400;
+      --jaune-pale:  #FDF8E3;
+      --noir:        #111418;
+      --gris-fort:   #3D4452;
+      --gris-moyen:  #6C7585;
+      --gris-leger:  #F2F4F7;
+      --bordure:     #E2E6EC;
+      --blanc:       #FFFFFF;
+      --rouge:       #D93025;
+      --rouge-pale:  #FEF2F2;
+      --sidebar-w:   240px;
+    }
+
+    html { font-size: 16px; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--gris-leger);
+      color: var(--noir);
+      min-height: 100vh;
+      display: flex;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--vert-fonce);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .sidebar-logo {
+      padding: 1.4rem 1.4rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-logo a {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.05rem; font-weight: 800;
+      color: var(--blanc); text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+    .sidebar-logo a span { color: var(--jaune); }
+    .sidebar-role {
+      font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35); margin-top: 0.2rem;
+    }
+
+    .sidebar-profile {
+      padding: 1.2rem 1.4rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .profile-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--jaune);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 800; color: var(--noir);
+      flex-shrink: 0;
+    }
+    .profile-name { font-size: 0.875rem; font-weight: 600; color: var(--blanc); line-height: 1.3; }
+    .profile-status {
+      font-size: 0.72rem; color: rgba(255,255,255,0.45);
+      display: flex; align-items: center; gap: 0.35rem; margin-top: 0.1rem;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ADE80; }
+
+    .sidebar-nav { flex: 1; padding: 1rem 0; overflow-y: auto; }
+
+    .nav-section-label {
+      font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      padding: 0.6rem 1.4rem 0.3rem;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 1.4rem;
+      font-size: 0.875rem; font-weight: 500;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer; transition: all 0.15s;
+      border-left: 3px solid transparent;
+      text-decoration: none;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--blanc); }
+    .nav-item.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--blanc); border-left-color: var(--jaune);
+    }
+    .nav-item svg {
+      width: 16px; height: 16px; flex-shrink: 0;
+      stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--jaune); color: var(--noir);
+      font-size: 0.65rem; font-weight: 700;
+      padding: 0.15rem 0.45rem; border-radius: 50px;
+    }
+
+    .sidebar-footer { padding: 1rem 1.4rem; border-top: 1px solid rgba(255,255,255,0.08); }
+    .btn-logout {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.82rem; font-weight: 500;
+      color: rgba(255,255,255,0.45);
+      background: none; border: none; cursor: pointer;
+      padding: 0; transition: color 0.2s;
+    }
+    .btn-logout:hover { color: rgba(255,255,255,0.8); }
+    .btn-logout svg {
+      width: 15px; height: 15px;
+      stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+    .topbar {
+      height: 60px; background: var(--blanc);
+      border-bottom: 1px solid var(--bordure);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-breadcrumb { font-size: 0.82rem; color: var(--gris-moyen); }
+    .topbar-breadcrumb span { color: var(--noir); font-weight: 600; }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-notif {
+      position: relative; cursor: pointer;
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid var(--bordure);
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .topbar-notif:hover { background: var(--gris-leger); }
+    .topbar-notif svg {
+      width: 16px; height: 16px;
+      stroke: var(--gris-fort); fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .notif-dot {
+      position: absolute; top: 6px; right: 6px;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--rouge); border: 1.5px solid var(--blanc);
+    }
+    .topbar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--jaune);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.78rem; font-weight: 800; color: var(--noir);
+      cursor: pointer;
+    }
+
+    .content { padding: 2rem; flex: 1; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .page-header {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; flex-wrap: wrap;
+      gap: 1rem; margin-bottom: 2rem;
+    }
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem; font-weight: 800;
+      color: var(--noir); letter-spacing: -0.02em;
+    }
+    .page-subtitle { font-size: 0.875rem; color: var(--gris-moyen); margin-top: 0.25rem; line-height: 1.5; }
+
+    /* ── STATS ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: var(--blanc); border: 1px solid var(--bordure);
+      border-radius: 12px; padding: 1.3rem 1.4rem;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--vert); }
+    .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; }
+    .stat-card-label { font-size: 0.75rem; font-weight: 600; color: var(--gris-moyen); text-transform: uppercase; letter-spacing: 0.07em; }
+    .stat-card-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .stat-card-icon svg { width: 16px; height: 16px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .stat-card-val { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; color: var(--noir); line-height: 1; }
+    .stat-card-sub { font-size: 0.75rem; color: var(--gris-moyen); margin-top: 0.3rem; }
+    .stat-card-trend {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 50px; margin-top: 0.4rem;
+    }
+    .trend-up { background: var(--vert-clair); color: var(--vert); }
+
+    /* ── BARRE DE RECHERCHE ── */
+    .search-card {
+      background: var(--blanc); border: 1px solid var(--bordure);
+      border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem;
+      box-shadow: none;
+    }
+
+    .search-row {
+      display: grid; grid-template-columns: 1.4fr 1.4fr 1fr 1fr auto;
+      gap: 1rem; align-items: end;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.72rem; font-weight: 600;
+      color: var(--gris-fort); text-transform: uppercase;
+      letter-spacing: 0.07em; margin-bottom: 0.4rem;
+    }
+
+    .input-wrap { position: relative; }
+    .input-wrap svg.field-icon {
+      position: absolute; left: 0.8rem; top: 50%;
+      transform: translateY(-50%);
+      width: 15px; height: 15px;
+      stroke: var(--gris-moyen); fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+      pointer-events: none;
+    }
+    .input-wrap.has-icon input,
+    .input-wrap.has-icon select { padding-left: 2.4rem; }
+
+    .field input, .field select {
+      width: 100%; padding: 0.72rem 0.9rem;
+      border: 1.5px solid var(--bordure); border-radius: 8px;
+      font-size: 0.875rem; font-family: 'Inter', sans-serif;
+      color: var(--noir); background: var(--blanc);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+    }
+    .field input::placeholder { color: #B8BFC9; }
+    .field input:focus, .field select:focus {
+      border-color: var(--vert);
+      box-shadow: 0 0 0 2px rgba(26,122,70,0.06);
+    }
+
+    .btn-rechercher {
+      padding: 0.72rem 1.6rem; border-radius: 8px;
+      border: none; background: var(--vert); color: var(--blanc);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.875rem; font-weight: 700; letter-spacing: 0.02em;
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; gap: 0.5rem;
+      white-space: nowrap;
+    }
+    .btn-rechercher:hover { background: var(--vert-fonce); }
+    .btn-rechercher svg {
+      width: 15px; height: 15px; stroke: currentColor; fill: none;
+      stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    /* Trajets rapides */
+    .quick-filters {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.2rem;
+      padding-top: 1.2rem; border-top: 1px solid var(--bordure);
+    }
+    .quick-filter-label {
+      font-size: 0.75rem; color: var(--gris-moyen); font-weight: 600;
+      align-self: center; margin-right: 0.3rem;
+    }
+    .quick-filter {
+      font-size: 0.78rem; font-weight: 500;
+      background: var(--vert-clair); color: var(--vert-fonce);
+      padding: 0.32rem 0.85rem; border-radius: 50px;
+      cursor: pointer; transition: background 0.2s; border: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .quick-filter:hover { background: #C8E8D5; }
+
+    /* ── RESULTATS ── */
+    .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;
+    }
+    .results-count { font-size: 0.9rem; color: var(--gris-fort); }
+    .results-count strong { color: var(--noir); font-family: 'Syne', sans-serif; }
+
+    .sort-select {
+      padding: 0.5rem 0.9rem; border: 1.5px solid var(--bordure);
+      border-radius: 8px; font-size: 0.82rem; color: var(--gris-fort);
+      background: var(--blanc); font-family: 'Inter', sans-serif;
+      cursor: pointer; outline: none;
+    }
+
+    /* Liste de trajets */
+    .trajets-list { display: flex; flex-direction: column; gap: 1rem; }
+
+    .trajet-card {
+      background: var(--blanc); border: 1px solid var(--bordure);
+      border-radius: 14px; padding: 1.4rem;
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: 1.5rem; align-items: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .trajet-card:hover { border-color: var(--vert); }
+
+    /* Conducteur */
+    .conducteur-info { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 90px; }
+    .conducteur-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--vert-clair); color: var(--vert-fonce);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 800;
+    }
+    .conducteur-name { font-size: 0.82rem; font-weight: 600; color: var(--noir); text-align: center; }
+    .conducteur-rating {
+      display: flex; align-items: center; gap: 0.25rem;
+      font-size: 0.75rem; color: var(--gris-moyen);
+    }
+    .conducteur-rating svg { width: 12px; height: 12px; fill: var(--jaune); stroke: var(--jaune); }
+
+    /* Détails trajet */
+    .trajet-details { min-width: 0; }
+
+    .trajet-route {
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .route-point { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 800; color: var(--noir); }
+    .route-arrow {
+      width: 28px; height: 1px; background: var(--bordure);
+      position: relative; flex-shrink: 0;
+    }
+    .route-arrow::after {
+      content: ''; position: absolute; right: -1px; top: -3px;
+      width: 6px; height: 6px;
+      border-top: 1.5px solid var(--gris-moyen);
+      border-right: 1.5px solid var(--gris-moyen);
+      transform: rotate(45deg);
+    }
+
+    .trajet-meta {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      font-size: 0.8rem; color: var(--gris-moyen);
+    }
+    .meta-item { display: flex; align-items: center; gap: 0.35rem; }
+    .meta-item svg {
+      width: 13px; height: 13px;
+      stroke: var(--gris-moyen); fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .trajet-tags { display: flex; gap: 0.4rem; margin-top: 0.6rem; flex-wrap: wrap; }
+    .tag {
+      font-size: 0.68rem; font-weight: 600;
+      padding: 0.2rem 0.55rem; border-radius: 4px;
+    }
+    .tag-moto    { background: var(--vert-clair); color: var(--vert); }
+    .tag-voiture { background: #EFF6FF; color: #2563EB; }
+    .tag-securite { background: var(--jaune-pale); color: #7A5800; }
+    .tag-flexible { background: var(--gris-leger); color: var(--gris-fort); }
+
+    /* Action / prix */
+    .trajet-action {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.6rem;
+      min-width: 130px;
+    }
+    .trajet-price { text-align: right; }
+    .price-val {
+      font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--vert);
+      line-height: 1;
+    }
+    .price-label { font-size: 0.7rem; color: var(--gris-moyen); margin-top: 0.15rem; }
+    .places-left {
+      font-size: 0.72rem; color: var(--gris-moyen);
+      background: var(--gris-leger); padding: 0.2rem 0.55rem;
+      border-radius: 4px; margin-top: 0.3rem; display: inline-block;
+    }
+    .places-left.warning { background: var(--jaune-pale); color: #7A5800; }
+
+    .btn-reserver {
+      padding: 0.55rem 1.3rem; border-radius: 8px;
+      border: none; background: var(--vert); color: var(--blanc);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-reserver:hover { background: var(--vert-fonce); }
+    .btn-reserver:disabled {
+      background: var(--bordure); color: var(--gris-moyen); cursor: not-allowed;
+    }
+    .btn-reserver.demande-envoyee {
+      background: var(--jaune-pale); color: #7A5800;
+      cursor: default;
+    }
+
+    /* Message vide */
+    .empty-state {
+      background: var(--blanc); border: 1px solid var(--bordure);
+      border-radius: 14px; padding: 3rem 2rem; text-align: center;
+    }
+    .empty-icon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--gris-leger);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.2rem;
+    }
+    .empty-icon svg { width: 24px; height: 24px; stroke: var(--gris-moyen); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .empty-state h3 { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 800; color: var(--noir); margin-bottom: 0.5rem; }
+    .empty-state p { font-size: 0.875rem; color: var(--gris-moyen); line-height: 1.7; max-width: 360px; margin: 0 auto; }
+
+    /* ── MODAL RESERVATION ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 300;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; }
+
+    .modal-box {
+      background: var(--blanc); border-radius: 16px;
+      padding: 2rem; max-width: 440px; width: 90%;
+      animation: popIn 0.3s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .modal-box h3 {
+      font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 800;
+      color: var(--noir); margin-bottom: 0.4rem;
+    }
+    .modal-box .modal-sub { font-size: 0.85rem; color: var(--gris-moyen); margin-bottom: 1.4rem; line-height: 1.6; }
+
+    .modal-summary {
+      background: var(--gris-leger); border-radius: 10px;
+      padding: 1rem; margin-bottom: 1.4rem;
+    }
+    .summary-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.82rem; padding: 0.3rem 0;
+      border-bottom: 1px solid var(--bordure);
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-key { color: var(--gris-moyen); }
+    .summary-val { font-weight: 600; color: var(--noir); }
+
+    .modal-field { margin-bottom: 1.2rem; }
+    .modal-field label {
+      display: block; font-size: 0.72rem; font-weight: 600;
+      color: var(--gris-fort); text-transform: uppercase;
+      letter-spacing: 0.07em; margin-bottom: 0.4rem;
+    }
+    .modal-field textarea {
+      width: 100%; padding: 0.7rem 0.9rem;
+      border: 1.5px solid var(--bordure); border-radius: 8px;
+      font-size: 0.85rem; font-family: 'Inter', sans-serif;
+      outline: none; resize: vertical; min-height: 70px;
+      transition: border-color 0.2s;
+    }
+    .modal-field textarea:focus { border-color: var(--vert); }
+
+    .modal-actions { display: flex; gap: 0.75rem; }
+    .btn-modal-cancel {
+      flex: 1; padding: 0.75rem; border-radius: 8px;
+      border: 1.5px solid var(--bordure); background: var(--blanc);
+      font-size: 0.875rem; font-weight: 600; color: var(--gris-fort);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-modal-cancel:hover { border-color: var(--gris-fort); }
+    .btn-modal-confirm {
+      flex: 2; padding: 0.75rem; border-radius: 8px;
+      border: none; background: var(--vert); color: var(--blanc);
+      font-family: 'Syne', sans-serif; font-size: 0.875rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn-modal-confirm:hover { background: var(--vert-fonce); }
+    .btn-modal-confirm .loader {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: var(--blanc); border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    .btn-modal-confirm.loading .btn-text,
+    .btn-modal-confirm.loading svg { display: none; }
+    .btn-modal-confirm.loading .loader { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Succès réservation */
+    .modal-success { display: none; text-align: center; }
+    .modal-success.visible { display: block; }
+    .modal-success-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--vert-clair); border: 2px solid var(--vert);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.3rem;
+    }
+    .modal-success-icon svg { width: 28px; height: 28px; stroke: var(--vert); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .modal-success h3 { text-align: center; }
+    .modal-success .modal-sub { text-align: center; }
+    .btn-modal-close {
+      width: 100%; padding: 0.85rem;
+      background: var(--vert); color: var(--blanc);
+      border: none; border-radius: 8px; cursor: pointer;
+      font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700;
+      transition: background 0.2s;
+    }
+    .btn-modal-close:hover { background: var(--vert-fonce); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 999;
+      background: var(--rouge); color: var(--blanc);
+      padding: 0.85rem 1.2rem; border-radius: 10px;
+      font-size: 0.85rem; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.35s cubic-bezier(.175,.885,.32,1.275);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* Placeholder */
+    .placeholder-card {
+      background: var(--blanc); border: 1px solid var(--bordure);
+      border-radius: 14px; padding: 3rem; text-align: center;
+    }
+
+    /* ── RESERVATIONS ── */
+    .resa-filters {
+      display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .resa-filter-btn {
+      padding: 0.5rem 1.1rem; border-radius: 50px;
+      border: 1.5px solid var(--bordure);
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--gris-moyen); background: var(--blanc);
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .resa-filter-btn.active, .resa-filter-btn:hover {
+      border-color: var(--vert); color: var(--vert); background: var(--vert-clair);
+    }
+    .resa-filter-count {
+      display: inline-block; margin-left: 0.4rem;
+      font-size: 0.7rem; font-weight: 700;
+      background: rgba(0,0,0,0.06); padding: 0.05rem 0.4rem;
+      border-radius: 50px;
+    }
+
+    .resa-card {
+      background: var(--blanc); border: 1px solid var(--bordure);
+      border-radius: 14px; padding: 1.4rem;
+      margin-bottom: 1rem;
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: 1.5rem; align-items: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .resa-card:hover { border-color: var(--vert); }
+    .resa-card.statut-attente  { border-left: 4px solid var(--jaune); }
+    .resa-card.statut-acceptee { border-left: 4px solid var(--vert); }
+    .resa-card.statut-refusee  { border-left: 4px solid var(--rouge); opacity: 0.75; }
+    .resa-card.statut-terminee { border-left: 4px solid var(--bordure); }
+
+    .resa-status-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.72rem; font-weight: 700;
+      padding: 0.3rem 0.7rem; border-radius: 50px;
+      margin-bottom: 0.6rem;
+    }
+    .resa-status-badge svg { width: 12px; height: 12px; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    .badge-attente  { background: var(--jaune-pale); color: #7A5800; }
+    .badge-attente svg { stroke: #7A5800; }
+    .badge-acceptee { background: var(--vert-clair); color: var(--vert); }
+    .badge-acceptee svg { stroke: var(--vert); }
+    .badge-refusee  { background: var(--rouge-pale); color: var(--rouge); }
+    .badge-refusee svg { stroke: var(--rouge); }
+    .badge-terminee { background: var(--gris-leger); color: var(--gris-moyen); }
+    .badge-terminee svg { stroke: var(--gris-moyen); }
+
+    .resa-conducteur {
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 90px;
+    }
+    .resa-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--vert-clair); color: var(--vert-fonce);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 800;
+    }
+    .resa-conducteur-name { font-size: 0.82rem; font-weight: 600; color: var(--noir); text-align: center; }
+
+    .resa-details { min-width: 0; }
+
+    .resa-route {
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .resa-meta {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      font-size: 0.8rem; color: var(--gris-moyen);
+    }
+
+    .resa-message {
+      margin-top: 0.6rem; padding: 0.6rem 0.8rem;
+      background: var(--gris-leger); border-radius: 8px;
+      font-size: 0.8rem; color: var(--gris-fort); line-height: 1.5;
+      border-left: 2px solid var(--bordure);
+    }
+    .resa-message strong { color: var(--noir); }
+
+    .resa-action {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.6rem;
+      min-width: 140px;
+    }
+
+    .btn-resa-msg {
+      padding: 0.55rem 1.2rem; border-radius: 8px;
+      border: 1.5px solid var(--vert); background: var(--blanc); color: var(--vert);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-resa-msg:hover { background: var(--vert); color: var(--blanc); }
+
+    .btn-resa-annuler {
+      padding: 0.55rem 1.2rem; border-radius: 8px;
+      border: 1.5px solid var(--bordure); background: var(--blanc); color: var(--gris-moyen);
+      font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-resa-annuler:hover { border-color: var(--rouge); color: var(--rouge); }
+
+    .btn-resa-evaluer {
+      padding: 0.55rem 1.2rem; border-radius: 8px;
+      border: none; background: var(--jaune); color: var(--noir);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-resa-evaluer:hover { background: #D4A500; }
+
+    .resa-prix {
+      font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--vert);
+    }
+    .resa-prix-label { font-size: 0.7rem; color: var(--gris-moyen); }
+
+    /* Notification bandeau */
+    .notif-banner {
+      display: flex; align-items: flex-start; gap: 0.9rem;
+      background: var(--vert-clair); border: 1px solid #A7D7BC;
+      border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1.5rem;
+    }
+    .notif-banner.refus { background: var(--rouge-pale); border-color: #FCA5A5; }
+    .notif-banner-icon {
+      width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+      background: var(--vert); display: flex; align-items: center; justify-content: center;
+    }
+    .notif-banner.refus .notif-banner-icon { background: var(--rouge); }
+    .notif-banner-icon svg { width: 18px; height: 18px; stroke: var(--blanc); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .notif-banner-text { font-size: 0.85rem; color: var(--vert-fonce); line-height: 1.6; }
+    .notif-banner.refus .notif-banner-text { color: var(--rouge); }
+    .notif-banner-text strong { display: block; font-family: 'Syne', sans-serif; font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .notif-banner-close {
+      margin-left: auto; background: none; border: none; cursor: pointer;
+      color: inherit; opacity: 0.5; transition: opacity 0.2s; flex-shrink: 0;
+    }
+    .notif-banner-close:hover { opacity: 1; }
+    .notif-banner-close svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    @media (max-width: 720px) {
+      .resa-card { grid-template-columns: 1fr; text-align: center; }
+      .resa-conducteur { flex-direction: row; justify-content: center; }
+      .resa-action { align-items: center; }
+      .resa-route { justify-content: center; }
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .search-row { grid-template-columns: 1fr 1fr; }
+      .search-row > *:nth-child(3),
+      .search-row > *:nth-child(4) { grid-column: span 1; }
+    }
+    @media (max-width: 720px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { display: none; }
+      .search-row { grid-template-columns: 1fr; }
+      .trajet-card { grid-template-columns: 1fr; text-align: center; }
+      .conducteur-info { flex-direction: row; justify-content: center; }
+      .trajet-action { align-items: center; }
+      .trajet-route { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <a href="accueil.html">Voisin <span>de</span> Route</a>
+    <div class="sidebar-role">Espace Passager</div>
+  </div>
+  <div class="sidebar-profile">
+    <div class="profile-avatar" id="sidebar-avatar">--</div>
+    <div>
+      <div class="profile-name" id="sidebar-nom">Chargement...</div>
+      <div class="profile-status"><div class="status-dot"></div> <span id="sidebar-statut">Compte verifie</span></div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Principal</div>
+    <a class="nav-item active" onclick="showView('rechercher')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Rechercher un trajet
+    </a>
+    <a class="nav-item" onclick="showView('reservations')">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Mes reservations
+      <span class="nav-badge">1</span>
+    </a>
+    <a class="nav-item" href="messagerie.html">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </a>
+    <div class="nav-section-label" style="margin-top:0.8rem;">Compte</div>
+    <a class="nav-item" onclick="showView('historique')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Historique
+    </a>
+    <a class="nav-item" onclick="showView('profil')">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Mon profil
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="handleLogout()">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Se deconnecter
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <div class="topbar">
+    <div class="topbar-breadcrumb">Tableau de bord <span id="breadcrumb-current">— Rechercher un trajet</span></div>
+    <div class="topbar-right">
+      <div class="topbar-notif">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="notif-dot"></div>
+      </div>
+      <div class="topbar-avatar">AK</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── VUE : RECHERCHER ── -->
+    <div class="view active" id="view-rechercher">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Rechercher un trajet</div>
+          <div class="page-subtitle">Trouvez un voisin de route disponible sur votre itineraire</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Trajets effectues</div>
+            <div class="stat-card-icon" style="background:var(--vert-clair)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--vert)"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val" id="stat-trajets-effectues">—</div>
+          <div class="stat-card-sub">Depuis votre inscription</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Total economise</div>
+            <div class="stat-card-icon" style="background:var(--jaune-pale)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--jaune)"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val" id="stat-total-economise">—</div>
+          <div class="stat-card-sub">FCFA par rapport au tarif normal</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Reservation en attente</div>
+            <div class="stat-card-icon" style="background:#EFF6FF">
+              <svg viewBox="0 0 24 24" style="stroke:#2563EB"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val" id="stat-resa-attente">—</div>
+          <div class="stat-card-sub" id="stat-resa-attente-sub">Aucune pour le moment</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Note moyenne donnee</div>
+            <div class="stat-card-icon" style="background:#FFF7ED">
+              <svg viewBox="0 0 24 24" style="stroke:#EA580C"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+          </div>
+          <div class="stat-card-val" id="stat-note-donnee">—</div>
+          <div class="stat-card-sub" id="stat-note-donnee-sub">Aux conducteurs</div>
+        </div>
+      </div>
+
+      <!-- Recherche -->
+      <div class="search-card">
+        <div class="search-row">
+          <div class="field">
+            <label>Depart</label>
+            <div class="input-wrap has-icon">
+              <svg class="field-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+              <select id="search-depart">
+                <option value="">D'ou partez-vous ?</option>
+                <option>Abomey-Calavi — UAC Campus</option>
+                <option>Cotonou — Centre-ville</option>
+                <option>Cotonou — Cadjehoun</option>
+                <option>Porto-Novo</option>
+                <option>Parakou</option>
+                <option>Abomey</option>
+                <option>Lokossa</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Destination</label>
+            <div class="input-wrap has-icon">
+              <svg class="field-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <select id="search-arrivee">
+                <option value="">Ou allez-vous ?</option>
+                <option>Cotonou — Centre-ville</option>
+                <option>Cotonou — Cadjehoun</option>
+                <option>Cotonou — Akpakpa</option>
+                <option>Porto-Novo</option>
+                <option>Parakou</option>
+                <option>Abomey-Calavi — UAC Campus</option>
+                <option>Departement du Plateau</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <div class="input-wrap has-icon">
+              <svg class="field-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <input type="date" id="search-date"/>
+            </div>
+          </div>
+          <div class="field">
+            <label>Vehicule</label>
+            <select id="search-vehicule">
+              <option value="">Tous</option>
+              <option value="moto">Moto</option>
+              <option value="voiture">Voiture</option>
+            </select>
+          </div>
+          <button class="btn-rechercher" onclick="rechercher()">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Rechercher
+          </button>
+        </div>
+
+        <div class="quick-filters">
+          <span class="quick-filter-label">Trajets frequents :</span>
+          <button class="quick-filter" onclick="quickSearch('Abomey-Calavi — UAC Campus','Cotonou — Centre-ville')">UAC → Cotonou Centre</button>
+          <button class="quick-filter" onclick="quickSearch('Abomey-Calavi — UAC Campus','Cotonou — Cadjehoun')">UAC → Cadjehoun</button>
+          <button class="quick-filter" onclick="quickSearch('Cotonou — Centre-ville','Porto-Novo')">Cotonou → Porto-Novo</button>
+          <button class="quick-filter" onclick="quickSearch('Abomey-Calavi — UAC Campus','Departement du Plateau')">UAC → Plateau</button>
+        </div>
+      </div>
+
+      <!-- Resultats -->
+      <div class="results-header">
+        <div class="results-count"><strong id="results-num">4</strong> trajets disponibles correspondant a votre recherche</div>
+        <select class="sort-select" id="sort-select" onchange="sortResults()">
+          <option value="heure">Trier par heure de depart</option>
+          <option value="prix">Trier par prix croissant</option>
+          <option value="note">Trier par note du conducteur</option>
+        </select>
+      </div>
+
+      <div class="trajets-list" id="trajets-list">
+        <p style="font-size:0.9rem; color:var(--gris-moyen); padding:1rem 0;">Recherche de trajets disponibles...</p>
+      </div>
+
+      <!-- Empty state (cache par defaut) -->
+      <div class="empty-state" id="empty-state" style="display:none;">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h3>Aucun trajet trouve</h3>
+        <p>Aucun trajet ne correspond a votre recherche pour le moment. Essayez une autre date ou publiez une demande pour etre notifie des qu'un conducteur propose ce trajet.</p>
+      </div>
+
+    </div>
+
+    <!-- ── AUTRES VUES ── -->
+    <div class="view" id="view-reservations">
+      <div class="page-header"><div><div class="page-title">Mes reservations</div><div class="page-subtitle">Suivi de vos demandes envoyees aux conducteurs</div></div></div>
+
+      <!-- Filtres -->
+      <div class="resa-filters">
+        <button class="resa-filter-btn active" onclick="filterResa('toutes', this)">Toutes<span class="resa-filter-count">4</span></button>
+        <button class="resa-filter-btn" onclick="filterResa('attente', this)">En attente<span class="resa-filter-count">1</span></button>
+        <button class="resa-filter-btn" onclick="filterResa('acceptee', this)">Acceptees<span class="resa-filter-count">1</span></button>
+        <button class="resa-filter-btn" onclick="filterResa('refusee', this)">Refusees<span class="resa-filter-count">1</span></button>
+        <button class="resa-filter-btn" onclick="filterResa('terminee', this)">Terminees<span class="resa-filter-count">1</span></button>
+      </div>
+
+      <div id="resa-liste">
+        <p style="font-size:0.9rem; color:var(--gris-moyen); padding:1rem 0;">Chargement de vos reservations...</p>
+      </div>
+    </div>
+
+    <div class="view" id="view-messages">
+      <div class="page-header"><div><div class="page-title">Messages</div><div class="page-subtitle">Vos echanges avec les conducteurs</div></div></div>
+      <div class="placeholder-card">
+        <div style="font-size:0.9rem; color:var(--gris-moyen); line-height:1.7;">La messagerie interne sera disponible dans la prochaine etape.</div>
+      </div>
+    </div>
+
+    <div class="view" id="view-historique">
+      <div class="page-header"><div><div class="page-title">Historique</div><div class="page-subtitle">Vos trajets passes</div></div></div>
+      <div class="placeholder-card">
+        <div style="font-size:0.9rem; color:var(--gris-moyen); line-height:1.7;">Cette section affichera l'historique complet de vos trajets effectues.</div>
+      </div>
+    </div>
+
+    <div class="view" id="view-profil">
+      <div class="page-header"><div><div class="page-title">Mon profil</div><div class="page-subtitle">Informations et parametres de votre compte</div></div></div>
+      <div class="placeholder-card">
+        <div style="font-size:0.9rem; color:var(--gris-moyen); line-height:1.7;">Modification de profil disponible prochainement.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL RESERVATION -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+
+    <div id="modal-form-content">
+      <h3>Confirmer la reservation</h3>
+      <div class="modal-sub">Une demande sera envoyee au conducteur. Vous serez notifie de sa reponse.</div>
+
+      <div class="modal-summary" id="modal-summary"></div>
+
+      <div class="modal-field">
+        <label>Message au conducteur (facultatif)</label>
+        <textarea id="modal-message" placeholder="Ex : Bonjour, je serai a l'heure au point de rendez-vous indique. Merci."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeModal()">Annuler</button>
+        <button class="btn-modal-confirm" id="btn-confirmer" onclick="confirmerReservation()">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="btn-text">Envoyer la demande</span>
+          <div class="loader"></div>
+        </button>
+      </div>
+    </div>
+
+    <div id="modal-success-content" class="modal-success">
+      <div class="modal-success-icon">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>Demande envoyee</h3>
+      <div class="modal-sub">Votre demande a ete transmise au conducteur. Vous recevrez une notification dans la messagerie dès qu'il repond — generalement sous quelques heures.</div>
+      <button class="btn-modal-close" onclick="closeModal()">Fermer</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL EVALUATION -->
+<div class="modal-overlay" id="modal-eval-overlay">
+  <div class="modal-box">
+    <div id="eval-form-content">
+      <h3>Evaluer le conducteur</h3>
+      <div class="modal-sub">Votre avis aide la communaute a identifier les meilleurs conducteurs.</div>
+
+      <div class="modal-summary" id="eval-summary"></div>
+
+      <div class="modal-field">
+        <label>Votre note</label>
+        <div id="star-rating" style="display:flex; gap:0.4rem; font-size:1.8rem; cursor:pointer;">
+          <span class="star" data-val="1">&#9734;</span>
+          <span class="star" data-val="2">&#9734;</span>
+          <span class="star" data-val="3">&#9734;</span>
+          <span class="star" data-val="4">&#9734;</span>
+          <span class="star" data-val="5">&#9734;</span>
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <label>Commentaire (facultatif)</label>
+        <textarea id="eval-comment" placeholder="Ex : Tres ponctuel, trajet agreable, je recommande."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeEvalModal()">Annuler</button>
+        <button class="btn-modal-confirm" id="btn-eval-confirmer" onclick="confirmerEvaluation()">
+          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span class="btn-text">Envoyer l'evaluation</span>
+          <div class="loader"></div>
+        </button>
+      </div>
+    </div>
+
+    <div id="eval-success-content" class="modal-success">
+      <div class="modal-success-icon">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>Merci pour votre evaluation</h3>
+      <div class="modal-sub">Votre avis a ete enregistre et aidera les autres etudiants a choisir leurs trajets.</div>
+      <button class="btn-modal-close" onclick="closeEvalModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = 'https://awpzfrshobabhnriwkza.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_jR2L5ZmvqSrSBRdvWrluKQ_wL34_STO';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+  let currentProfile = null;
+  let dernierResultatsTrajets = [];
+
+  async function initDashboard() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = 'connexion.html'; return; }
+    currentUser = session.user;
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (error || !profile || profile.role !== 'passager') {
+      window.location.href = 'connexion.html';
+      return;
+    }
+    currentProfile = profile;
+
+    const initiales = (profile.prenom[0] || '') + (profile.nom[0] || '');
+    document.getElementById('sidebar-avatar').textContent = initiales.toUpperCase();
+    document.getElementById('sidebar-nom').textContent = profile.prenom + ' ' + profile.nom;
+    document.getElementById('sidebar-statut').textContent =
+      profile.statut_verification === 'verifie' ? 'Compte verifie' : 'Verification en cours';
+    document.getElementById('topbar-avatar').textContent = initiales.toUpperCase();
+
+    chargerStatistiques();
+    rechercher();
+    chargerReservations();
+  }
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+  function formatDateHeure(date, heure) {
+    const d = new Date(date + 'T00:00:00');
+    const aujourd = new Date(); aujourd.setHours(0,0,0,0);
+    const demain = new Date(aujourd); demain.setDate(demain.getDate() + 1);
+    let label;
+    if (d.getTime() === aujourd.getTime()) label = "Aujourd'hui";
+    else if (d.getTime() === demain.getTime()) label = "Demain";
+    else label = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    return label + ', ' + heure.slice(0,5);
+  }
+
+  async function chargerStatistiques() {
+    const { data: reservations } = await supabase
+      .from('reservations')
+      .select('statut, trajets(prix_par_personne)')
+      .eq('passager_id', currentUser.id);
+
+    const termines = (reservations || []).filter(r => r.statut === 'terminee');
+    const enAttente = (reservations || []).filter(r => r.statut === 'en_attente' || r.statut === 'acceptee');
+
+    document.getElementById('stat-trajets-effectues').textContent = termines.length;
+
+    const economie = termines.reduce((sum, r) => sum + (r.trajets ? r.trajets.prix_par_personne : 0), 0);
+    document.getElementById('stat-total-economise').textContent = economie.toLocaleString('fr-FR');
+
+    document.getElementById('stat-resa-attente').textContent = enAttente.length;
+    document.getElementById('stat-resa-attente-sub').textContent =
+      enAttente.length > 0 ? 'A suivre dans Mes reservations' : 'Aucune pour le moment';
+
+    document.getElementById('stat-note-donnee').textContent =
+      currentProfile.note_moyenne > 0 ? currentProfile.note_moyenne : '—';
+    document.getElementById('stat-note-donnee-sub').textContent = 'Recue des conducteurs';
+  }
+
+  /* Navigation */
+  const breadcrumbs = {
+    'rechercher':   '— Rechercher un trajet',
+    'reservations': '— Mes reservations',
+    'messages':     '— Messages',
+    'historique':   '— Historique',
+    'profil':       '— Mon profil'
+  };
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.getElementById('breadcrumb-current').textContent = breadcrumbs[name] || '';
+    event.currentTarget && event.currentTarget.classList.add('active');
+  }
+
+  /* Recherche rapide */
+  function quickSearch(depart, arrivee) {
+    document.getElementById('search-depart').value = depart;
+    document.getElementById('search-arrivee').value = arrivee;
+    rechercher();
+  }
+
+  async function rechercher() {
+    const depart   = document.getElementById('search-depart').value;
+    const arrivee  = document.getElementById('search-arrivee').value;
+    const date     = document.getElementById('search-date').value;
+    const vehicule = document.getElementById('search-vehicule').value;
+
+    let query = supabase
+      .from('trajets')
+      .select('*, profiles!trajets_conducteur_id_fkey(prenom, nom, note_moyenne)')
+      .eq('statut', 'actif')
+      .gt('places_disponibles', 0)
+      .order('date_trajet', { ascending: true })
+      .order('heure_depart', { ascending: true });
+
+    if (depart)   query = query.eq('ville_depart', depart);
+    if (arrivee)  query = query.eq('ville_arrivee', arrivee);
+    if (date)     query = query.eq('date_trajet', date);
+    if (vehicule) query = query.eq('type_vehicule', vehicule);
+
+    const { data: trajets, error } = await query;
+
+    if (error) { showToast('Erreur lors de la recherche : ' + error.message); return; }
+
+    dernierResultatsTrajets = trajets || [];
+    afficherResultats(dernierResultatsTrajets);
+
+    if (depart || arrivee || date || vehicule) {
+      showToast('Recherche mise a jour — ' + dernierResultatsTrajets.length + ' trajet(s) trouve(s).', 'success');
+    }
+  }
+
+  function afficherResultats(trajets) {
+    const list = document.getElementById('trajets-list');
+    document.getElementById('results-num').textContent = trajets.length;
+    document.getElementById('empty-state').style.display = trajets.length === 0 ? 'block' : 'none';
+
+    if (trajets.length === 0) {
+      list.innerHTML = '';
+      return;
+    }
+
+    list.innerHTML = trajets.map(t => {
+      const conducteur = t.profiles;
+      const initiales = (conducteur.prenom[0] + conducteur.nom[0]).toUpperCase();
+      const tags = [];
+      tags.push(`<span class="tag ${t.type_vehicule === 'moto' ? 'tag-moto' : 'tag-voiture'}">${capitalize(t.type_vehicule)}</span>`);
+      if (t.etudiantes_uniquement) tags.push('<span class="tag tag-securite">Etudiantes uniquement</span>');
+      if (t.horaire_flexible) tags.push('<span class="tag tag-flexible">Horaire flexible</span>');
+      if (t.bagages_acceptes) tags.push('<span class="tag tag-flexible">Bagages acceptes</span>');
+
+      return `
+      <div class="trajet-card" data-prix="${t.prix_par_personne}" data-heure="${t.heure_depart}" data-note="${conducteur.note_moyenne || 0}">
+        <div class="conducteur-info">
+          <div class="conducteur-avatar">${initiales}</div>
+          <div class="conducteur-name">${conducteur.prenom} ${conducteur.nom[0]}.</div>
+          <div class="conducteur-rating">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            ${conducteur.note_moyenne > 0 ? conducteur.note_moyenne : 'Nouveau'}
+          </div>
+        </div>
+        <div class="trajet-details">
+          <div class="trajet-route">
+            <span class="route-point">${t.ville_depart}</span>
+            <span class="route-arrow"></span>
+            <span class="route-point">${t.ville_arrivee}</span>
+          </div>
+          <div class="trajet-meta">
+            <div class="meta-item">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              ${formatDateHeure(t.date_trajet, t.heure_depart)}
+            </div>
+            ${t.point_depart_precis ? `<div class="meta-item"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>${t.point_depart_precis}</div>` : ''}
+          </div>
+          <div class="trajet-tags">${tags.join('')}</div>
+        </div>
+        <div class="trajet-action">
+          <div class="trajet-price">
+            <div class="price-val">${t.prix_par_personne.toLocaleString('fr-FR')} FCFA</div>
+            <div class="price-label">par personne</div>
+          </div>
+          <span class="places-left ${t.places_disponibles <= 1 ? 'warning' : ''}">${t.places_disponibles} place(s) restante(s)</span>
+          <button class="btn-reserver" onclick="openModal('${t.id}', '${conducteur.prenom} ${conducteur.nom}', '${t.ville_depart}', '${t.ville_arrivee}', '${formatDateHeure(t.date_trajet, t.heure_depart)}', ${t.prix_par_personne}, '${capitalize(t.type_vehicule)}')">
+            Reserver
+          </button>
+        </div>
+      </div>
+    `}).join('');
+  }
+
+  function sortResults() {
+    const sortBy = document.getElementById('sort-select').value;
+    const sorted = [...dernierResultatsTrajets];
+    sorted.sort((a, b) => {
+      if (sortBy === 'prix') return a.prix_par_personne - b.prix_par_personne;
+      if (sortBy === 'note') return (b.profiles.note_moyenne || 0) - (a.profiles.note_moyenne || 0);
+      return a.heure_depart.localeCompare(b.heure_depart);
+    });
+    afficherResultats(sorted);
+  }
+
+  /* Modal reservation */
+  let trajetSelectionneId = null;
+
+  function openModal(trajetId, conducteur, depart, arrivee, dateHeure, prix, vehicule) {
+    trajetSelectionneId = trajetId;
+    document.getElementById('modal-summary').innerHTML = `
+      <div class="summary-row"><span class="summary-key">Conducteur</span><span class="summary-val">${conducteur}</span></div>
+      <div class="summary-row"><span class="summary-key">Itineraire</span><span class="summary-val">${depart} → ${arrivee}</span></div>
+      <div class="summary-row"><span class="summary-key">Date et heure</span><span class="summary-val">${dateHeure}</span></div>
+      <div class="summary-row"><span class="summary-key">Vehicule</span><span class="summary-val">${vehicule}</span></div>
+      <div class="summary-row"><span class="summary-key">Participation</span><span class="summary-val">${prix.toLocaleString('fr-FR')} FCFA</span></div>
+    `;
+
+    document.getElementById('modal-form-content').style.display = 'block';
+    document.getElementById('modal-success-content').classList.remove('visible');
+    document.getElementById('modal-message').value = '';
+    document.getElementById('modal-overlay').classList.add('visible');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('visible');
+  }
+
+  async function confirmerReservation() {
+    const btn = document.getElementById('btn-confirmer');
+    btn.classList.add('loading'); btn.disabled = true;
+
+    const message = document.getElementById('modal-message').value.trim() || null;
+
+    const { error } = await supabase.from('reservations').insert({
+      trajet_id: trajetSelectionneId,
+      passager_id: currentUser.id,
+      message_demande: message
+    });
+
+    btn.classList.remove('loading'); btn.disabled = false;
+
+    if (error) {
+      if (error.code === '23505') {
+        showToast('Vous avez deja envoye une demande pour ce trajet.');
+      } else {
+        showToast('Erreur lors de la reservation : ' + error.message);
+      }
+      return;
+    }
+
+    document.getElementById('modal-form-content').style.display = 'none';
+    document.getElementById('modal-success-content').classList.add('visible');
+
+    rechercher();
+    chargerReservations();
+    chargerStatistiques();
+  }
+
+  /* Charger les vraies reservations du passager */
+  async function chargerReservations() {
+    const { data: reservations, error } = await supabase
+      .from('reservations')
+      .select('*, trajets(*, profiles!trajets_conducteur_id_fkey(prenom, nom))')
+      .eq('passager_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) { showToast('Erreur lors du chargement des reservations.'); return; }
+
+    const liste = document.getElementById('resa-liste');
+    if (!reservations || reservations.length === 0) {
+      liste.innerHTML = '<p style="font-size:0.9rem; color:var(--gris-moyen); padding:1rem 0;">Vous n\'avez pas encore de reservation.</p>';
+      updateFilterCounts([]);
+      return;
+    }
+
+    updateFilterCounts(reservations);
+
+    // Recuperer les evaluations deja faites par ce passager
+    const { data: evals } = await supabase
+      .from('evaluations')
+      .select('reservation_id')
+      .eq('evaluateur_id', currentUser.id);
+    const dejaEvalues = new Set((evals || []).map(e => e.reservation_id));
+
+    const statutMap = {
+      en_attente: { badge: 'badge-attente', card: 'statut-attente', label: 'En attente de reponse',
+        icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+      acceptee: { badge: 'badge-acceptee', card: 'statut-acceptee', label: 'Confirmee par le conducteur',
+        icon: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' },
+      refusee: { badge: 'badge-refusee', card: 'statut-refusee', label: 'Demande refusee',
+        icon: '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' },
+      annulee: { badge: 'badge-refusee', card: 'statut-refusee', label: 'Annulee',
+        icon: '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' },
+      terminee: { badge: 'badge-terminee', card: 'statut-terminee', label: 'Trajet termine',
+        icon: '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' }
+    };
+
+    liste.innerHTML = reservations.map(r => {
+      const t = r.trajets;
+      const conducteur = t.profiles;
+      const initiales = (conducteur.prenom[0] + conducteur.nom[0]).toUpperCase();
+      const sm = statutMap[r.statut] || statutMap.en_attente;
+
+      let actionHtml = '';
+      if (r.statut === 'en_attente') {
+        actionHtml = `<button class="btn-resa-annuler" onclick="annulerDemande('${r.id}', this)">Annuler la demande</button>`;
+      } else if (r.statut === 'acceptee') {
+        actionHtml = `
+          <a href="messagerie.html" class="btn-resa-msg" style="text-decoration:none; display:inline-block; text-align:center;">Envoyer un message</a>
+          <button class="btn-resa-annuler" onclick="annulerDemande('${r.id}', this)">Annuler</button>`;
+      } else if (r.statut === 'refusee' || r.statut === 'annulee') {
+        actionHtml = `<button class="btn-resa-msg" onclick="showView('rechercher')">Chercher un autre trajet</button>`;
+      } else if (r.statut === 'terminee') {
+        actionHtml = dejaEvalues.has(r.id)
+          ? `<span style="font-size:0.78rem; color:var(--vert); font-weight:600;">Trajet evalue</span>`
+          : `<button class="btn-resa-evaluer" onclick="ouvrirEvaluation('${r.id}', '${t.conducteur_id}', '${conducteur.prenom} ${conducteur.nom}', '${t.ville_depart} → ${t.ville_arrivee}')">Evaluer le trajet</button>`;
+      }
+
+      return `
+      <div class="resa-card ${sm.card}" data-statut="${r.statut === 'annulee' ? 'refusee' : r.statut}">
+        <div class="resa-conducteur">
+          <div class="resa-avatar">${initiales}</div>
+          <div class="resa-conducteur-name">${conducteur.prenom} ${conducteur.nom[0]}.</div>
+        </div>
+        <div class="resa-details">
+          <div class="resa-status-badge ${sm.badge}">${sm.icon} ${sm.label}</div>
+          <div class="resa-route">
+            <span class="route-point">${t.ville_depart}</span>
+            <span class="route-arrow"></span>
+            <span class="route-point">${t.ville_arrivee}</span>
+          </div>
+          <div class="resa-meta">
+            <div class="meta-item">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              ${formatDateHeure(t.date_trajet, t.heure_depart)}
+            </div>
+          </div>
+          ${r.message_demande ? `<div class="resa-message"><strong>Votre message :</strong> ${r.message_demande}</div>` : ''}
+        </div>
+        <div class="resa-action">
+          <div>
+            <div class="resa-prix" style="${r.statut === 'refusee' || r.statut === 'terminee' ? 'color:var(--gris-moyen)' : ''}">${t.prix_par_personne.toLocaleString('fr-FR')} FCFA</div>
+            <div class="resa-prix-label">par personne</div>
+          </div>
+          ${actionHtml}
+        </div>
+      </div>
+    `}).join('');
+  }
+
+  function updateFilterCounts(reservations) {
+    const counts = { toutes: reservations.length, attente: 0, acceptee: 0, refusee: 0, terminee: 0 };
+    reservations.forEach(r => {
+      if (r.statut === 'en_attente') counts.attente++;
+      else if (r.statut === 'acceptee') counts.acceptee++;
+      else if (r.statut === 'refusee' || r.statut === 'annulee') counts.refusee++;
+      else if (r.statut === 'terminee') counts.terminee++;
+    });
+    const keys = ['toutes', 'attente', 'acceptee', 'refusee', 'terminee'];
+    document.querySelectorAll('.resa-filter-btn').forEach((btn, i) => {
+      const c = btn.querySelector('.resa-filter-count');
+      if (c) c.textContent = counts[keys[i]];
+    });
+
+    const badge = document.querySelector('[onclick="showView(\'reservations\')"] .nav-badge');
+    const actives = counts.attente + counts.acceptee;
+    if (badge) {
+      if (actives > 0) { badge.textContent = actives; badge.style.display = 'inline-block'; }
+      else { badge.style.display = 'none'; }
+    }
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = type === 'success' ? 'var(--vert)' : 'var(--rouge)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  /* Filtres reservations */
+  function filterResa(statut, btn) {
+    document.querySelectorAll('.resa-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.resa-card').forEach(card => {
+      card.style.display = (statut === 'toutes' || card.dataset.statut === statut) ? 'grid' : 'none';
+    });
+  }
+
+  /* Annuler une demande */
+  async function annulerDemande(reservationId, btn) {
+    const { error } = await supabase
+      .from('reservations')
+      .update({ statut: 'annulee' })
+      .eq('id', reservationId);
+
+    if (error) {
+      showToast('Erreur lors de l\'annulation : ' + error.message);
+      return;
+    }
+
+    showToast('Votre demande a ete annulee.', 'success');
+    chargerReservations();
+    chargerStatistiques();
+  }
+
+  /* Evaluation */
+  let selectedRating = 0;
+  let evalReservationId = null;
+  let evalConducteurId = null;
+
+  function ouvrirEvaluation(reservationId, conducteurId, nomConducteur, route) {
+    document.getElementById('eval-summary').innerHTML = `
+      <div class="summary-row"><span class="summary-key">Conducteur</span><span class="summary-val">${nomConducteur}</span></div>
+      <div class="summary-row"><span class="summary-key">Trajet</span><span class="summary-val">${route}</span></div>
+    `;
+
+    selectedRating = 0;
+    document.querySelectorAll('#star-rating .star').forEach(s => { s.innerHTML = '&#9734;'; s.style.color = 'var(--gris-moyen)'; });
+    document.getElementById('eval-comment').value = '';
+    document.getElementById('eval-form-content').style.display = 'block';
+    document.getElementById('eval-success-content').classList.remove('visible');
+    document.getElementById('modal-eval-overlay').classList.add('visible');
+    evalReservationId = reservationId;
+    evalConducteurId = conducteurId;
+  }
+
+  function closeEvalModal() {
+    document.getElementById('modal-eval-overlay').classList.remove('visible');
+    chargerReservations();
+  }
+
+  async function confirmerEvaluation() {
+    if (selectedRating === 0) {
+      showToast('Merci de selectionner une note avant de valider.');
+      return;
+    }
+    const btn = document.getElementById('btn-eval-confirmer');
+    btn.classList.add('loading'); btn.disabled = true;
+
+    const commentaire = document.getElementById('eval-comment').value.trim() || null;
+
+    const { error } = await supabase.from('evaluations').insert({
+      reservation_id: evalReservationId,
+      evaluateur_id: currentUser.id,
+      evalue_id: evalConducteurId,
+      note: selectedRating,
+      commentaire: commentaire
+    });
+
+    btn.classList.remove('loading'); btn.disabled = false;
+
+    if (error) {
+      showToast('Erreur lors de l\'envoi : ' + error.message);
+      return;
+    }
+
+    document.getElementById('eval-form-content').style.display = 'none';
+    document.getElementById('eval-success-content').classList.add('visible');
+  }
+
+  /* Etoiles */
+  document.querySelectorAll('#star-rating .star').forEach(star => {
+    star.addEventListener('click', () => {
+      selectedRating = parseInt(star.dataset.val);
+      document.querySelectorAll('#star-rating .star').forEach(s => {
+        const val = parseInt(s.dataset.val);
+        s.innerHTML = val <= selectedRating ? '&#9733;' : '&#9734;';
+        s.style.color = val <= selectedRating ? 'var(--jaune)' : 'var(--gris-moyen)';
+      });
+    });
+  });
+
+  /* Fermer modal eval en cliquant a l'exterieur */
+  document.getElementById('modal-eval-overlay').addEventListener('click', e => {
+    if (e.target.id === 'modal-eval-overlay') closeEvalModal();
+  });
+
+  /* Date min = aujourd'hui */
+  document.getElementById('search-date').min = new Date().toISOString().split('T')[0];
+
+  /* Fermer modal en cliquant à l'exterieur */
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target.id === 'modal-overlay') closeModal();
+  });
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = 'connexion.html';
+  }
+
+  initDashboard();
+</script>
+</body>
+</html>
